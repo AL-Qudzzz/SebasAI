@@ -24,7 +24,7 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function AuthPage() {
   const router = useRouter();
-  const { signUp, login, loadingAuthState: authContextLoading } = useAuth(); // Renamed loadingAuthState to avoid conflict
+  const { signUp, login, loadingAuthState: authContextLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
@@ -47,34 +47,40 @@ export default function AuthPage() {
     setIsLoading(false);
 
     if (result instanceof Error) {
-      // Check if it's an AuthError by looking for the 'code' property
       if ('code' in result && typeof (result as any).code === 'string') {
           const authError = result as AuthError;
           switch (authError.code) {
               case 'auth/user-not-found':
               case 'auth/wrong-password':
-              case 'auth/invalid-credential': // Common for incorrect login
-                  setError('Invalid email or password.');
+              case 'auth/invalid-credential':
+                  setError('Invalid email or password. Please try again.');
                   break;
               case 'auth/email-already-in-use':
-                  setError('This email is already registered. Try logging in.');
+                  setError('This email is already registered. Please try logging in.');
                   break;
               case 'auth/weak-password':
-                  setError('Password is too weak. Please choose a stronger password.');
+                  setError('Password is too weak. Please choose a stronger password (at least 6 characters).');
+                  break;
+              case 'auth/invalid-api-key':
+              case 'auth/api-key-not-valid':
+                  setError('Firebase API Key is invalid. Please check your Firebase project configuration and ensure your .env file is correct and the server has been restarted.');
+                  break;
+              case 'auth/app-deleted':
+              case 'auth/app-not-authorized':
+              case 'auth/project-not-found':
+                  setError('Firebase project configuration error. Please check your Firebase setup.');
                   break;
               default:
-                  setError(authError.message || 'An authentication error occurred.');
+                  setError(authError.message || `An authentication error occurred: ${authError.code}`);
           }
       } else {
-          // Generic error
-          setError(result.message || 'An unexpected error occurred.');
+          setError(result.message || 'An unexpected error occurred. Please try again.');
       }
-    } else if (result) { // Success (FirebaseUser)
-      reset(); // Clear form
-      router.push('/'); // Redirect to dashboard or desired page
+    } else if (result) { 
+      reset(); 
+      router.push('/'); 
     } else {
-      // This case should ideally not be reached if login/signUp always return User or Error
-      setError('An unexpected issue occurred. Please try again.');
+      setError('An unexpected issue occurred during authentication. Please try again.');
     }
   };
 
@@ -82,7 +88,7 @@ export default function AuthPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
         <Loader2 className="w-12 h-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading authentication...</p>
+        <p className="mt-4 text-muted-foreground">Loading authentication state...</p>
       </div>
     );
   }
@@ -104,8 +110,8 @@ export default function AuthPage() {
         <CardContent>
           <Tabs value={activeTab} onValueChange={(value) => {
             setActiveTab(value as 'login' | 'signup');
-            setError(null); // Clear error on tab change
-            reset(); // Clear form on tab change
+            setError(null); 
+            reset(); 
           }} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Login</TabsTrigger>
