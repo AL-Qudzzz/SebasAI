@@ -6,7 +6,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
-import { LogIn, LogOut, UserCircle, Loader2 } from 'lucide-react';
+import { LogIn, LogOut, Loader2 } from 'lucide-react'; // Removed UserCircle as it wasn't used
 
 export default function AppHeader() {
   const { currentUser, loadingAuthState, logout } = useAuth();
@@ -22,14 +22,12 @@ export default function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
       <SidebarTrigger className="md:hidden" />
       
-      <div className="flex-1">
-        {/* Placeholder for other header content */}
-      </div>
+      {/* Any other left-aligned or center-aligned header content could go here or before the SidebarTrigger */}
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 ml-auto"> {/* This group is pushed to the right */}
         <ThemeToggleButton />
         {loadingAuthState ? (
           <Button variant="ghost" size="icon" disabled>
@@ -55,3 +53,4 @@ export default function AppHeader() {
     </header>
   );
 }
+
