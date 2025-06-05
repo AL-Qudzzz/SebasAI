@@ -10,9 +10,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Inter', 'sans-serif'],
-        code: ['monospace'],
+        body: ['Alegreya', 'serif'],
+        headline: ['Belleza', 'sans-serif'],
+        code: ['monospace', 'monospace'],
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -58,12 +58,14 @@ export default {
         sidebar: {
           DEFAULT: 'hsl(var(--sidebar-background))',
           foreground: 'hsl(var(--sidebar-foreground))',
-          primary: 'hsl(var(--sidebar-primary))',
-          'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-          accent: 'hsl(var(--sidebar-accent))',
-          'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-          border: 'hsl(var(--sidebar-border))',
-          ring: 'hsl(var(--sidebar-ring))',
+          active: {
+            DEFAULT: 'hsl(var(--sidebar-active-background))',
+            foreground: 'hsl(var(--sidebar-active-foreground))',
+          },
+          hover: {
+            DEFAULT: 'hsl(var(--sidebar-hover-background))',
+            foreground: 'hsl(var(--sidebar-hover-foreground))',
+          }
         },
       },
       borderRadius: {
