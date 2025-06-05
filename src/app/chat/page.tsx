@@ -40,10 +40,9 @@ export default function AIChatPage() {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    // @ts-ignore TODO: Fix type for useActionState
-    formAction(formData);
-    setUserInput(''); // Clear input after submitting with formAction
+    // The form's `action` prop will call `formAction` with the form data.
+    // No need to call it manually here.
+    setUserInput(''); // Clear input after the form submission process starts
   };
   
 
