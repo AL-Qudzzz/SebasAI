@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -40,8 +41,18 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, SetValue<T
   );
 
   useEffect(() => {
-    setStoredValue(readValue());
-  }, [readValue]);
+    const newValue = readValue();
+    // Only set state if the new value is actually different from the current stored value.
+    // For objects/arrays, JSON.stringify can help compare content rather than reference,
+    // mitigating loops caused by new references from JSON.parse or unstable initialValue props.
+    if (
+      (typeof newValue === 'object' && newValue !== null && typeof storedValue === 'object' && storedValue !== null)
+      ? JSON.stringify(newValue) !== JSON.stringify(storedValue)
+      : newValue !== storedValue
+    ) {
+      setStoredValue(newValue);
+    }
+  }, [readValue, storedValue]); // readValue changes if key/initialValue prop changes. storedValue ensures we compare against current state.
 
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
