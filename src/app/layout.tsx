@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -5,6 +6,8 @@ import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar'
 import AppHeader from '@/components/shared/AppHeader';
 import SidebarContentComponent from '@/components/shared/SidebarContentComponent';
 import { ThemeProvider } from '@/components/providers/theme-provider';
+import { AuthProvider } from '@/contexts/auth-context';
+
 
 export const metadata: Metadata = {
   title: 'MyBot - Your Personal AI Companion',
@@ -30,22 +33,24 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SidebarProvider>
-            <div className="flex min-h-screen">
-              <Sidebar collapsible="icon">
-                <SidebarContentComponent />
-              </Sidebar>
-              <SidebarInset className="bg-background flex flex-col flex-1">
-                <AppHeader />
-                <main className="flex-1 p-4 md:p-6 overflow-y-auto">
-                  <div className="container mx-auto max-w-7xl">
-                   {children}
-                  </div>
-                </main>
-              </SidebarInset>
-            </div>
-            <Toaster />
-          </SidebarProvider>
+          <AuthProvider>
+            <SidebarProvider>
+              <div className="flex min-h-screen">
+                <Sidebar collapsible="icon">
+                  <SidebarContentComponent />
+                </Sidebar>
+                <SidebarInset className="bg-background flex flex-col flex-1">
+                  <AppHeader />
+                  <main className="flex-1 p-4 md:p-6 overflow-y-auto">
+                    <div className="container mx-auto max-w-7xl">
+                    {children}
+                    </div>
+                  </main>
+                </SidebarInset>
+              </div>
+              <Toaster />
+            </SidebarProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
