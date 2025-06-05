@@ -1,7 +1,8 @@
+
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useEffect, useRef, useState, useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import PageTitle from '@/components/common/PageTitle';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -28,7 +29,7 @@ function SubmitButton() {
 }
 
 export default function AIChatPage() {
-  const [state, formAction] = useFormState(handleUserMessage, initialState);
+  const [state, formAction] = useActionState(handleUserMessage, initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [userInput, setUserInput] = useState('');
@@ -40,6 +41,7 @@ export default function AIChatPage() {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    // @ts-ignore TODO: Fix type for useActionState
     formAction(formData);
     setUserInput(''); // Clear input after submitting with formAction
   };
@@ -60,6 +62,7 @@ export default function AIChatPage() {
 
         <form
           ref={formRef}
+          // @ts-ignore TODO: Fix type for useActionState
           action={formAction}
           onSubmit={handleSubmit}
           className="p-4 border-t bg-background flex items-center space-x-2"
