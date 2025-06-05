@@ -8,13 +8,13 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { analyzeSentiment, type SentimentInput, type SentimentOutput } from './summarize-sentiment';
 
-export const ChatWithAIInputSchema = z.object({
+const ChatWithAIInputSchema = z.object({
   userInput: z.string().describe('The message from the user.'),
   chatHistory: z.string().optional().describe('Optional: The history of the conversation so far, to provide context. Each turn should be on a new line, like "User: Hello\nAI: Hi there!"'),
 });
 export type ChatWithAIInput = z.infer<typeof ChatWithAIInputSchema>;
 
-export const ChatWithAIOutputSchema = z.object({
+const ChatWithAIOutputSchema = z.object({
   response: z.string().describe('The AI\'s empathetic response to the user.'),
   sentiment: z.string().describe('The sentiment of the user\'s input (e.g., positive, negative, neutral).'),
   sentimentScore: z.number().describe('A numerical score for the sentiment (-1 to 1).'),
