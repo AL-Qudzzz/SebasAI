@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import PageTitle from '@/components/common/PageTitle';
-import type { AuthError } from 'firebase/auth';
+import type { AuthError, User as FirebaseUser } from 'firebase/auth';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -24,7 +24,7 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function AuthPage() {
   const router = useRouter();
-  const { signUp, login } = useAuth();
+  const { signUp, login, loadingAuthState: authContextLoading } = useAuth(); // Renamed loadingAuthState to avoid conflict
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
@@ -36,7 +36,7 @@ export default function AuthPage() {
   const handleAuthAction: SubmitHandler<FormData> = async (data) => {
     setIsLoading(true);
     setError(null);
-    let result;
+    let result: FirebaseUser | Error | undefined;
 
     if (activeTab === 'login') {
       result = await login(data.email, data.password);
@@ -46,24 +46,46 @@ export default function AuthPage() {
     
     setIsLoading(false);
 
-    if (result && 'code' in result) { // It's an AuthError
-        const authError = result as AuthError;
-        switch (authError.code) {
-            case 'auth/user-not-found':
-            case 'auth/wrong-password':
-                setError('Invalid email or password.');
-                break;
-            case 'auth/email-already-in-use':
-                setError('This email is already registered. Try logging in.');
-                break;
-            default:
-                setError(authError.message || 'An unexpected error occurred.');
-        }
-    } else { // Success (FirebaseUser)
+    if (result instanceof Error) {
+      // Check if it's an AuthError by looking for the 'code' property
+      if ('code' in result && typeof (result as any).code === 'string') {
+          const authError = result as AuthError;
+          switch (authError.code) {
+              case 'auth/user-not-found':
+              case 'auth/wrong-password':
+              case 'auth/invalid-credential': // Common for incorrect login
+                  setError('Invalid email or password.');
+                  break;
+              case 'auth/email-already-in-use':
+                  setError('This email is already registered. Try logging in.');
+                  break;
+              case 'auth/weak-password':
+                  setError('Password is too weak. Please choose a stronger password.');
+                  break;
+              default:
+                  setError(authError.message || 'An authentication error occurred.');
+          }
+      } else {
+          // Generic error
+          setError(result.message || 'An unexpected error occurred.');
+      }
+    } else if (result) { // Success (FirebaseUser)
       reset(); // Clear form
       router.push('/'); // Redirect to dashboard or desired page
+    } else {
+      // This case should ideally not be reached if login/signUp always return User or Error
+      setError('An unexpected issue occurred. Please try again.');
     }
   };
+
+  if (authContextLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Loading authentication...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
