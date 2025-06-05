@@ -42,6 +42,14 @@ const prompt = ai.definePrompt({
 
   Here is a journal prompt for the user:
   `,
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+    ],
+  },
 });
 
 const generateJournalPromptFlow = ai.defineFlow(
@@ -58,14 +66,18 @@ const generateJournalPromptFlow = ai.defineFlow(
       if (output && typeof output.prompt === 'string' && output.prompt.trim() !== '') {
         return output;
       } else {
-        console.error('AI did not return a valid prompt structure from generateJournalPromptFlow. LLM Response:', response);
+        console.error('AI did not return a valid prompt structure from generateJournalPromptFlow. LLM Response:', JSON.stringify(response, null, 2));
         // Return a fallback prompt
         return { prompt: "Take a moment to reflect on your day. What's one thing that stood out to you, good or bad?" };
       }
-    } catch (error) {
-      console.error('Error in generateJournalPromptFlow:', error);
+    } catch (error: any) {
+      console.error('Error in generateJournalPromptFlow during AI call:', error);
+      if (error.cause) {
+        console.error('Cause of error:', error.cause);
+      }
       // Return a fallback prompt in case of an exception during the AI call
       return { prompt: "What are you grateful for today? Even small things count." };
     }
   }
 );
+
