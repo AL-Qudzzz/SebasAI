@@ -101,7 +101,7 @@ export default function AuthPage() {
         className="text-center"
       />
       <Card className="w-full max-w-md shadow-xl">
-        <CardHeader>
+        <CardHeader className="items-center"> {/* Added items-center here */}
           <CardTitle className="text-2xl text-center">
             {activeTab === 'login' ? 'Welcome Back!' : 'Create Account'}
           </CardTitle>
