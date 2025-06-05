@@ -10,7 +10,7 @@ import { AuthProvider } from '@/contexts/auth-context';
 
 
 export const metadata: Metadata = {
-  title: 'MyBot - Your Personal AI Companion',
+  title: 'Zara - Your Personal AI Companion',
   description: 'AI-powered chat, journaling, and wellness support.',
 };
 

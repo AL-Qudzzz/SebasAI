@@ -7,7 +7,7 @@ export function AppLogo(props: SVGProps<SVGSVGElement>) {
       viewBox="0 0 100 100"
       width="40"
       height="40"
-      aria-label="MyBot Logo"
+      aria-label="Zara Logo"
       {...props}
     >
       <rect width="100" height="100" rx="20" fill="hsl(var(--primary))" />
@@ -20,7 +20,7 @@ export function AppLogo(props: SVGProps<SVGSVGElement>) {
         fontFamily="Belleza, sans-serif"
         fill="hsl(var(--primary-foreground))"
       >
-        MB
+        ZA
       </text>
     </svg>
   );

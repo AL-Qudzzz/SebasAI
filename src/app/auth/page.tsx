@@ -97,7 +97,7 @@ export default function AuthPage() {
     <div className="flex flex-col items-center justify-center h-full">
       <PageTitle 
         title={activeTab === 'login' ? "Login" : "Sign Up"} 
-        description="Access your MyBot account or create a new one."
+        description="Access your Zara account or create a new one."
         className="text-center"
       />
       <Card className="w-full max-w-md shadow-xl">
