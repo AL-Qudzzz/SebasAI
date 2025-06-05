@@ -86,7 +86,7 @@ export default function AuthPage() {
 
   if (authContextLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+      <div className="flex flex-col items-center justify-center h-full">
         <Loader2 className="w-12 h-12 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Loading authentication state...</p>
       </div>
@@ -94,8 +94,12 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
-      <PageTitle title={activeTab === 'login' ? "Login" : "Sign Up"} description="Access your MyBot account or create a new one." />
+    <div className="flex flex-col items-center justify-center h-full">
+      <PageTitle 
+        title={activeTab === 'login' ? "Login" : "Sign Up"} 
+        description="Access your MyBot account or create a new one."
+        className="text-center"
+      />
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader>
           <CardTitle className="text-2xl text-center">
