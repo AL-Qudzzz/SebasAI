@@ -37,6 +37,14 @@ const prompt = ai.definePrompt({
   input: {schema: SentimentInputSchema},
   output: {schema: SentimentOutputSchema},
   prompt: `Analyze the sentiment of the following text and provide a sentiment label (positive, negative, or neutral) and a numerical score between -1 and 1, where -1 is very negative and 1 is very positive.\n\nText: {{{text}}}`,
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+    ],
+  },
 });
 
 const analyzeSentimentFlow = ai.defineFlow(
