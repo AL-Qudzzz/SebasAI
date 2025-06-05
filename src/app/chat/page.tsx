@@ -33,17 +33,22 @@ export default function AIChatPage() {
   const formRef = useRef<HTMLFormElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [userInput, setUserInput] = useState('');
+  const prevMessagesLengthRef = useRef(initialState.messages.length);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [state.messages]);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    // The form's `action` prop will call `formAction` with the form data.
-    // No need to call it manually here.
-    setUserInput(''); // Clear input after the form submission process starts
-  };
+  useEffect(() => {
+    // If new messages were added successfully (length increased and no error), clear the input.
+    if (state.messages.length > prevMessagesLengthRef.current && !state.error) {
+      setUserInput('');
+      // Optionally, if you want to reset the native form element too (e.g., if it wasn't fully controlled or had other fields)
+      // formRef.current?.reset(); 
+    }
+    // Update the ref to the current messages length for the next comparison.
+    prevMessagesLengthRef.current = state.messages.length;
+  }, [state.messages, state.error]);
   
 
   return (
@@ -61,9 +66,8 @@ export default function AIChatPage() {
 
         <form
           ref={formRef}
-          // @ts-ignore TODO: Fix type for useActionState
+          // @ts-ignore TODO: Fix type for useActionState with form's action prop
           action={formAction}
-          onSubmit={handleSubmit}
           className="p-4 border-t bg-background flex items-center space-x-2"
         >
           <Input
@@ -82,3 +86,4 @@ export default function AIChatPage() {
     </div>
   );
 }
+
