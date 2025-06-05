@@ -7,20 +7,35 @@ import { getItem, setItem } from '@/lib/localStorage';
 type SetValue<T> = (value: T | ((val: T) => T)) => void;
 
 export function useLocalStorage<T>(key: string, initialValue: T): [T, SetValue<T>] {
-  const readValue = useCallback((): T => {
+  // Initialize state with initialValue. This ensures server and client initial render match.
+  const [storedValue, setStoredValue] = useState<T>(initialValue);
+
+  // Effect to read from localStorage and update state after initial mount (client-side only)
+  useEffect(() => {
     if (typeof window === 'undefined') {
-      return initialValue;
+      // This should ideally not be reached if running in a client component context,
+      // but good for safety.
+      return;
     }
+
+    let valueFromStorage: T;
     try {
       const item = getItem<T>(key);
-      return item !== null ? item : initialValue;
+      valueFromStorage = item !== null ? item : initialValue;
     } catch (error) {
-      console.warn(`Error reading localStorage key “${key}”:`, error);
-      return initialValue;
+      console.warn(`Error reading localStorage key “${key}” on mount:`, error);
+      valueFromStorage = initialValue;
     }
-  }, [initialValue, key]);
 
-  const [storedValue, setStoredValue] = useState<T>(readValue);
+    // Only update state if the fetched value is different from the current state
+    // (which is `initialValue` on first client render before this effect runs).
+    // Using JSON.stringify for comparison to handle objects/arrays correctly.
+    if (JSON.stringify(valueFromStorage) !== JSON.stringify(storedValue)) {
+      setStoredValue(valueFromStorage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, initialValue]); // Rerun if key or initialValue prop changes.
+                           // storedValue is implicitly initialValue from useState on the first run of this effect.
 
   const setValue: SetValue<T> = useCallback(
     (value) => {
@@ -28,46 +43,49 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, SetValue<T
         console.warn(
           `Tried setting localStorage key “${key}” even though environment is not a client`
         );
+        return;
       }
       try {
         const newValue = value instanceof Function ? value(storedValue) : value;
         setItem<T>(key, newValue);
-        setStoredValue(newValue);
+        setStoredValue(newValue); // Update state
       } catch (error) {
         console.warn(`Error setting localStorage key “${key}”:`, error);
       }
     },
-    [key, storedValue]
+    [key, storedValue] // storedValue is needed for the functional update `value(storedValue)`
   );
 
+  // Effect for synchronizing with changes from other tabs/windows
   useEffect(() => {
-    const newValue = readValue();
-    // Only set state if the new value is actually different from the current stored value.
-    // For objects/arrays, JSON.stringify can help compare content rather than reference,
-    // mitigating loops caused by new references from JSON.parse or unstable initialValue props.
-    if (
-      (typeof newValue === 'object' && newValue !== null && typeof storedValue === 'object' && storedValue !== null)
-      ? JSON.stringify(newValue) !== JSON.stringify(storedValue)
-      : newValue !== storedValue
-    ) {
-      setStoredValue(newValue);
+    if (typeof window === 'undefined') {
+      return;
     }
-  }, [readValue, storedValue]); // readValue changes if key/initialValue prop changes. storedValue ensures we compare against current state.
 
-  useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === key && event.newValue) {
-         try {
-            setStoredValue(JSON.parse(event.newValue) as T);
-        } catch (error) {
-            console.warn(`Error parsing storage change for key "${key}":`, error);
+      if (event.key === key) {
+        let newValueFromEvent: T;
+        if (event.newValue === null) { // Item was removed or cleared from another tab
+          newValueFromEvent = initialValue;
+        } else {
+          try {
+            newValueFromEvent = JSON.parse(event.newValue) as T;
+          } catch (error) {
+            console.warn(`Error parsing storage event for key "${key}":`, error);
+            return; // Don't proceed if parse fails
+          }
+        }
+
+        // Update state only if the new value from event is different from current stored value
+        if (JSON.stringify(newValueFromEvent) !== JSON.stringify(storedValue)) {
+          setStoredValue(newValueFromEvent);
         }
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [key]);
+  }, [key, initialValue, storedValue]); // Dependencies ensure fresh closures
 
   return [storedValue, setValue];
 }
