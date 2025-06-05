@@ -40,19 +40,15 @@ export default function AIChatPage() {
   }, [state.messages]);
 
   useEffect(() => {
-    // If new messages were added successfully (length increased and no error), clear the input.
     if (state.messages.length > prevMessagesLengthRef.current && !state.error) {
       setUserInput('');
-      // Optionally, if you want to reset the native form element too (e.g., if it wasn't fully controlled or had other fields)
-      // formRef.current?.reset(); 
     }
-    // Update the ref to the current messages length for the next comparison.
     prevMessagesLengthRef.current = state.messages.length;
   }, [state.messages, state.error]);
   
 
   return (
-    <div className="h-[calc(100vh-10rem)] flex flex-col">
+    <div className="h-[calc(100vh-6rem)] flex flex-col"> {/* Increased height */}
       <PageTitle
         title="AI Chat"
         description="Talk with MyBot. It's here to listen, offer empathetic responses, and help you reflect."

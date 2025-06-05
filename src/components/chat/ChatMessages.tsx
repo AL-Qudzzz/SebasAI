@@ -1,3 +1,4 @@
+
 'use client';
 
 import { cn } from '@/lib/utils';
@@ -19,7 +20,7 @@ const getSentimentIcon = (sentiment?: string, score?: number) => {
 
 export default function ChatMessages({ messages }: ChatMessagesProps) {
   return (
-    <div className="space-y-4 flex-1 overflow-y-auto p-4 rounded-lg border bg-card">
+    <div className="space-y-4"> {/* Simplified class: removed flex-1, overflow, padding, border, bg-card, rounded-lg */}
       {messages.map((msg, index) => (
         <div
           key={index}
@@ -30,7 +31,7 @@ export default function ChatMessages({ messages }: ChatMessagesProps) {
         >
           <div
             className={cn(
-              'p-2 rounded-full',
+              'p-2 rounded-full', // Kept p-2 on icon container for better visual
               msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
             )}
           >
@@ -58,3 +59,4 @@ export default function ChatMessages({ messages }: ChatMessagesProps) {
     </div>
   );
 }
+
