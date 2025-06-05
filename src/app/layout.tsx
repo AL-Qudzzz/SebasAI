@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import SidebarNav from '@/components/shared/SidebarNav';
-import { AppLogo } from '@/components/icons/AppLogo';
+import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
+import AppHeader from '@/components/shared/AppHeader';
+import SidebarContentComponent from '@/components/shared/SidebarContentComponent';
 
 export const metadata: Metadata = {
   title: 'MyBot - Your Personal AI Companion',
@@ -22,15 +23,22 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&family=Belleza&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <div className="flex min-h-screen">
-          <SidebarNav />
-          <main className="flex-1 p-6 overflow-auto bg-background">
-            <div className="container mx-auto max-w-7xl">
-             {children}
-            </div>
-          </main>
-        </div>
-        <Toaster />
+        <SidebarProvider>
+          <div className="flex min-h-screen">
+            <Sidebar collapsible="icon">
+              <SidebarContentComponent />
+            </Sidebar>
+            <SidebarInset className="bg-background flex flex-col flex-1">
+              <AppHeader />
+              <main className="flex-1 p-4 md:p-6 overflow-y-auto">
+                <div className="container mx-auto max-w-7xl">
+                 {children}
+                </div>
+              </main>
+            </SidebarInset>
+          </div>
+          <Toaster />
+        </SidebarProvider>
       </body>
     </html>
   );
