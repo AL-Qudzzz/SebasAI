@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -50,7 +51,21 @@ const generateJournalPromptFlow = ai.defineFlow(
     outputSchema: GenerateJournalPromptOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    try {
+      const response = await prompt(input);
+      const output = response.output;
+
+      if (output && typeof output.prompt === 'string' && output.prompt.trim() !== '') {
+        return output;
+      } else {
+        console.error('AI did not return a valid prompt structure from generateJournalPromptFlow. LLM Response:', response);
+        // Return a fallback prompt
+        return { prompt: "Take a moment to reflect on your day. What's one thing that stood out to you, good or bad?" };
+      }
+    } catch (error) {
+      console.error('Error in generateJournalPromptFlow:', error);
+      // Return a fallback prompt in case of an exception during the AI call
+      return { prompt: "What are you grateful for today? Even small things count." };
+    }
   }
 );
