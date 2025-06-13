@@ -58,4 +58,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Gagal membuat catatan." }, { status: 500 });
   }
 }
-
