@@ -1,3 +1,4 @@
+
 // src/ai/flows/chatWithAI.ts
 'use server';
 /**
@@ -58,13 +59,28 @@ const chatWithAIFlow = ai.defineFlow(
     outputSchema: ChatWithAIOutputSchema,
   },
   async (input: ChatWithAIInput) => {
-    // Get empathetic response
-    const chatResponse = await empatheticChatPrompt(input);
-    const aiResponseMessage = chatResponse.output?.response || "I'm not sure how to respond to that right now, but I'm here to listen.";
+    let aiResponseMessage = "I'm not sure how to respond to that right now, but I'm here to listen.";
+    let sentimentAnalysis: SentimentOutput = { sentiment: 'neutral', score: 0 };
 
-    // Analyze sentiment of user's input
-    const sentimentInput: SentimentInput = { text: input.userInput };
-    const sentimentAnalysis: SentimentOutput = await analyzeSentiment(sentimentInput);
+    try {
+      // Get empathetic response
+      const chatResponse = await empatheticChatPrompt(input);
+      if (chatResponse.output?.response) {
+        aiResponseMessage = chatResponse.output.response;
+      }
+    } catch (error) {
+      console.error('Error getting empathetic response from AI:', error);
+      // aiResponseMessage already has a fallback
+    }
+
+    try {
+      // Analyze sentiment of user's input
+      const sentimentInput: SentimentInput = { text: input.userInput };
+      sentimentAnalysis = await analyzeSentiment(sentimentInput);
+    } catch (error) {
+      console.error('Error analyzing sentiment:', error);
+      // sentimentAnalysis already has fallback values
+    }
 
     return {
       response: aiResponseMessage,
@@ -73,3 +89,4 @@ const chatWithAIFlow = ai.defineFlow(
     };
   }
 );
+

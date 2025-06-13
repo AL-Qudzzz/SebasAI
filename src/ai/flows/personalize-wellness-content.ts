@@ -1,3 +1,4 @@
+
 // src/ai/flows/personalize-wellness-content.ts
 'use server';
 /**
@@ -47,6 +48,14 @@ Journal Entries: {{{journalEntries}}}
 
 Provide specific suggestions for mindfulness activities, resources, or exercises. Make sure the advice does not constitute medical advice.
 `,
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+    ],
+  },
 });
 
 const personalizeWellnessContentFlow = ai.defineFlow(
@@ -56,7 +65,20 @@ const personalizeWellnessContentFlow = ai.defineFlow(
     outputSchema: PersonalizeWellnessContentOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    try {
+      const {output} = await prompt(input);
+      if (output && typeof output.suggestedContent === 'string' && output.suggestedContent.trim() !== '') {
+        return output;
+      }
+      console.error('AI did not return valid content for personalizeWellnessContentFlow. Output:', JSON.stringify(output, null, 2));
+      return { suggestedContent: "I'm having a little trouble thinking of suggestions right now. Perhaps try a general mindfulness exercise, like focusing on your breath for a few minutes?" };
+    } catch (error: any) {
+      console.error('Error in personalizeWellnessContentFlow during AI call:', error);
+      if (error.cause) {
+        console.error('Cause of error:', error.cause);
+      }
+      return { suggestedContent: "Sorry, I couldn't generate personalized suggestions at this moment. Please try again later." };
+    }
   }
 );
+
