@@ -10,10 +10,7 @@ interface Note {
 
 // !!! IMPORTANT: In-memory store. Data will be lost on server restart. !!!
 // For production, use a persistent database like Firestore.
-let notes: Note[] = [
-  { id: '1', content: 'Ini adalah catatan contoh pertama.', timestamp: new Date().toISOString() },
-  { id: '2', content: 'Jangan lupa beli susu besok.', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
-];
+let notes: Note[] = []; // Initialize as an empty array
 
 // GET all notes
 export async function GET(request: Request) {
@@ -44,7 +41,7 @@ export async function POST(request: Request) {
     notes.push(newNote);
     console.log("New note created:", newNote);
     return NextResponse.json(newNote, { status: 201 });
-  } catch (error) {
+  } catch (error)
     console.error("Error creating note:", error);
     if (error instanceof SyntaxError) {
         return NextResponse.json({ error: "Format request tidak valid." }, { status: 400 });
@@ -52,3 +49,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Gagal membuat catatan." }, { status: 500 });
   }
 }
+

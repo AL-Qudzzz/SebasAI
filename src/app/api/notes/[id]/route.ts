@@ -14,10 +14,8 @@ interface Note {
 // This is a simplified example; in a real app, you'd fetch from a shared data source.
 // For this demo, we'll re-declare it. This won't work across different serverless function invocations
 // if Vercel scales them independently. For a real app, a DB is a must.
-let notes: Note[] = [
-    { id: '1', content: 'Ini adalah catatan contoh pertama.', timestamp: new Date().toISOString() },
-    { id: '2', content: 'Jangan lupa beli susu besok.', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
-];
+let notes: Note[] = []; // Initialize as an empty array
+
 // This is a hack to try and share the notes array for this demo.
 // In a real app, notes would come from a database.
 if (typeof (global as any).notes === 'undefined') {
@@ -104,3 +102,4 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Gagal menghapus catatan." }, { status: 500 });
   }
 }
+
