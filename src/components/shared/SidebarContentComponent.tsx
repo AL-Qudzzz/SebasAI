@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, MessageSquare, BookText, Smile, Lightbulb, PenSquare } from 'lucide-react';
+import { Home, MessageSquare, BookText, Smile, Lightbulb, PenSquare, Sparkles, PieChart } from 'lucide-react'; // Added Sparkles, PieChart
 import { AppLogo } from '@/components/icons/AppLogo';
 import { cn } from '@/lib/utils';
 import {
@@ -21,6 +21,8 @@ const navItems = [
   { href: '/mood-tracker', label: 'Mood Tracker', icon: Smile },
   { href: '/content', label: 'Personalized Content', icon: Lightbulb },
   { href: '/daily-quote', label: 'Kutipan Harian', icon: PenSquare },
+  { href: '/wellness-tip', label: 'Tips Kesejahteraan', icon: Sparkles }, // New Feature 1
+  { href: '/mood-poll', label: 'Jajak Pendapat Suasana Hati', icon: PieChart }, // New Feature 2
   // { href: '/settings', label: 'Settings', icon: Settings }, // Future placeholder
 ];
 
