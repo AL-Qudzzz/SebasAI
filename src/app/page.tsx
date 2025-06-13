@@ -38,7 +38,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <PageTitle
-        title="Welcome to Zara"
+        title="Welcome to Sebas"
         description="Your personal AI companion for mental wellness and self-reflection. Explore the features below to get started."
       />
 

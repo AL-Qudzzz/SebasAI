@@ -35,8 +35,8 @@ export default function SidebarContentComponent() {
       <SidebarHeader className="p-4"> {/* Added padding to match old SidebarNav style */}
         <div className="flex items-center space-x-2">
           <AppLogo />
-          {/* The text "Zara" might be hidden when collapsed to icon, handled by Sidebar component styles */}
-          <span className="text-2xl font-headline font-semibold text-primary-foreground">Zara</span>
+          {/* The text "Sebas" might be hidden when collapsed to icon, handled by Sidebar component styles */}
+          <span className="text-2xl font-headline font-semibold text-primary-foreground">Sebas</span>
         </div>
       </SidebarHeader>
       <SidebarContent className="p-2"> {/* Added padding to match old SidebarNav style */}

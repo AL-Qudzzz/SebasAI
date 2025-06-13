@@ -13,7 +13,7 @@ import { handleUserMessage, type ChatState } from './actions';
 
 const initialState: ChatState = {
   messages: [
-    { role: 'ai', content: "Hello! I'm Zara. How are you feeling today? Feel free to share anything on your mind." }
+    { role: 'ai', content: "Hello! I'm Sebas. How are you feeling today? Feel free to share anything on your mind." }
   ],
   error: null,
   isLoading: false,
@@ -51,7 +51,7 @@ export default function AIChatPage() {
     <div className="h-[calc(100vh-6rem)] flex flex-col"> {/* Increased height */}
       <PageTitle
         title="AI Chat"
-        description="Talk with Zara. It's here to listen, offer empathetic responses, and help you reflect."
+        description="Talk with Sebas. It's here to listen, offer empathetic responses, and help you reflect."
       />
 
       <div className="flex-1 flex flex-col bg-card shadow-lg rounded-lg overflow-hidden">
