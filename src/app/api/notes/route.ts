@@ -12,6 +12,14 @@ interface Note {
 // For production, use a persistent database like Firestore.
 let notes: Note[] = []; // Initialize as an empty array
 
+// This is a hack to try and share the notes array for this demo.
+// In a real app, notes would come from a database.
+if (typeof (global as any).notes === 'undefined') {
+    (global as any).notes = notes;
+} else {
+    notes = (global as any).notes;
+}
+
 // GET all notes
 export async function GET(request: Request) {
   try {
@@ -39,9 +47,10 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString(),
     };
     notes.push(newNote);
+    (global as any).notes = notes; // Update global ref
     console.log("New note created:", newNote);
     return NextResponse.json(newNote, { status: 201 });
-  } catch (error)
+  } catch (error) { // Opening curly brace added here
     console.error("Error creating note:", error);
     if (error instanceof SyntaxError) {
         return NextResponse.json({ error: "Format request tidak valid." }, { status: 400 });
