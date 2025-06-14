@@ -63,7 +63,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 ## 👥 Contributors
 
 ### Project Lead
-- [Muhammad Faiqul Umam Dzunnuroeni] - Project Lead & Full Stack Developer
+- [Muhammad Faiqul Umam Dzunnuroeni] - Project Lead 
 
 ### Frontend Team
 - [Syifa Najwa Azzahra] - Frontend Developer & Design
