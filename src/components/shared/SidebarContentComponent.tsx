@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, MessageSquare, BookText, Smile, Lightbulb, PenSquare, Sparkles, PieChart, FileText, Target } from 'lucide-react'; // Added Target
+import { Home, MessageSquare, BookText, Smile, Lightbulb, PenSquare, Sparkles, PieChart, FileText, Target, Users, User as UserIcon } from 'lucide-react'; // Added Users, UserIcon
 import { AppLogo } from '@/components/icons/AppLogo';
 import { cn } from '@/lib/utils';
 import {
@@ -19,12 +19,14 @@ const navItems = [
   { href: '/chat', label: 'AI Chat', icon: MessageSquare },
   { href: '/journal', label: 'Journal', icon: BookText },
   { href: '/mood-tracker', label: 'Mood Tracker', icon: Smile },
-  { href: '/goals', label: 'Tujuan Saya', icon: Target }, // New Feature: Goals
+  { href: '/goals', label: 'Tujuan Saya', icon: Target },
   { href: '/content', label: 'Personalized Content', icon: Lightbulb },
   { href: '/daily-quote', label: 'Kutipan Harian', icon: PenSquare },
-  { href: '/wellness-tip', label: 'Tips Kesejahteraan', icon: Sparkles }, 
+  { href: '/wellness-tip', label: 'Tips Kesejahteraan', icon: Sparkles },
   { href: '/mood-poll', label: 'Jajak Pendapat Suasana Hati', icon: PieChart },
   { href: '/notes', label: 'Catatan Singkat', icon: FileText },
+  { href: '/community', label: 'Komunitas', icon: Users },
+  { href: '/profile', label: 'Profil Saya', icon: UserIcon },
   // { href: '/settings', label: 'Settings', icon: Settings }, // Future placeholder
 ];
 
@@ -39,7 +41,7 @@ export default function SidebarContentComponent() {
           <span className="text-2xl font-headline font-semibold text-sidebar-foreground">Sebas</span>
         </div>
       </SidebarHeader>
-      <SidebarContent className="p-2"> 
+      <SidebarContent className="p-2">
         <SidebarMenu>
           {navItems.map((item) => {
             const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/');
@@ -66,4 +68,3 @@ export default function SidebarContentComponent() {
     </>
   );
 }
-
