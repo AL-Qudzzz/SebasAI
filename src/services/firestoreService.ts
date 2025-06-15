@@ -3,7 +3,7 @@
 import { db } from '@/lib/firebase';
 import type { JournalEntry } from '@/app/journal/page';
 import type { MoodEntry } from '@/app/mood-tracker/page';
-import { collection, addDoc, getDocs, query, where, orderBy, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp, FieldValue, getDoc } from 'firebase/firestore';
 
 // --- Journal Entries ---
 
@@ -152,10 +152,10 @@ interface StoredCommunityPost {
   userId: string;
   authorEmail: string;
   content: string;
-  createdAt: Timestamp;
+  createdAt: Timestamp; // Will be a Firestore Timestamp object
 }
 
-// Interface for data structure used in the frontend
+// Interface for data structure used in the frontend and returned by API
 export interface CommunityPost {
   id: string; // Firestore document ID
   userId: string;
@@ -164,24 +164,53 @@ export interface CommunityPost {
   createdAt: string; // ISO string date for client-side
 }
 
-export async function createCommunityPost(userId: string, authorEmail: string, content: string): Promise<string | null> {
+// Data structure for adding a new post
+interface NewCommunityPostData {
+  userId: string;
+  authorEmail: string;
+  content: string;
+  createdAt: FieldValue; // Specifically FieldValue from serverTimestamp()
+}
+
+export async function createCommunityPost(userId: string, authorEmail: string, content: string): Promise<CommunityPost | null> {
   if (!userId || !authorEmail || !content.trim()) {
-    console.error("User ID, author email, and content are required to create a community post.");
+    console.error("User ID, author email, and content are required for createCommunityPost.");
     return null;
   }
   try {
-    const postToSave: StoredCommunityPost = {
+    const postToSave: NewCommunityPostData = {
       userId,
       authorEmail,
       content: content.trim(),
-      createdAt: serverTimestamp() as Timestamp,
+      createdAt: serverTimestamp(),
     };
+
     const docRef = await addDoc(collection(db, 'communityPosts'), postToSave);
-    console.log("Community post saved to Firestore with ID: ", docRef.id);
-    return docRef.id;
+    
+    // Fetch the just-created document to get the server-generated timestamp
+    const newDocSnap = await getDoc(doc(db, 'communityPosts', docRef.id));
+    if (!newDocSnap.exists()) {
+        console.error("Failed to fetch newly created community post from Firestore:", docRef.id);
+        // This case implies addDoc succeeded but getDoc failed, which is highly unlikely
+        // but good to handle. The user would still get an error.
+        return null; 
+    }
+
+    const savedData = newDocSnap.data() as StoredCommunityPost; // Data as it is in Firestore
+
+    console.log("Community post saved and fetched from Firestore with ID: ", newDocSnap.id);
+    return {
+        id: newDocSnap.id,
+        userId: savedData.userId,
+        authorEmail: savedData.authorEmail,
+        content: savedData.content,
+        createdAt: (savedData.createdAt as Timestamp).toDate().toISOString(), // Convert Timestamp to ISO string
+    };
+
   } catch (error) {
-    console.error("Error saving community post to Firestore: ", error);
-    return null;
+    // This catch block handles errors from addDoc or getDoc
+    console.error("Error in createCommunityPost (saving or fetching post) to Firestore: ", error);
+    return null; // This null is what triggers the "Gagal membuat postingan komunitas." in the API
   }
 }
 
@@ -190,14 +219,14 @@ export async function getCommunityPosts(): Promise<CommunityPost[]> {
     const q = query(collection(db, 'communityPosts'), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     const posts: CommunityPost[] = [];
-    querySnapshot.forEach((doc) => {
-      const data = doc.data() as StoredCommunityPost;
+    querySnapshot.forEach((docSnap) => { // Renamed doc to docSnap for clarity
+      const data = docSnap.data() as StoredCommunityPost;
       posts.push({
-        id: doc.id,
+        id: docSnap.id,
         userId: data.userId,
         authorEmail: data.authorEmail,
         content: data.content,
-        createdAt: (data.createdAt.toDate()).toISOString(), // Convert Firestore Timestamp to ISO string
+        createdAt: (data.createdAt as Timestamp).toDate().toISOString(), // Convert Firestore Timestamp to ISO string
       });
     });
     console.log(`Fetched ${posts.length} community posts from Firestore.`);

@@ -21,7 +21,7 @@ export default function CommunityPage() {
 
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
-  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true); // Start true to load initial posts
   const [isSubmittingPost, setIsSubmittingPost] = useState(false);
 
   const fetchPosts = useCallback(async () => {
@@ -62,7 +62,7 @@ export default function CommunityPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: currentUser.uid,
-          authorEmail: currentUser.email || 'Anonim',
+          authorEmail: currentUser.email || 'Anonim', // Ensure email is passed
           content: newPostContent,
         }),
       });
@@ -70,8 +70,8 @@ export default function CommunityPage() {
         const errData = await response.json().catch(() => ({ error: 'Gagal membuat postingan.' }));
         throw new Error(errData.error);
       }
-      const updatedPosts: CommunityPost[] = await response.json(); // API returns all posts including the new one
-      setPosts(updatedPosts);
+      const newPost: CommunityPost = await response.json(); // API now returns the new post
+      setPosts(prevPosts => [newPost, ...prevPosts]); // Prepend the new post to the local state
       setNewPostContent('');
       toast({ title: "Sukses", description: "Postingan berhasil dibuat!" });
     } catch (error: any) {
