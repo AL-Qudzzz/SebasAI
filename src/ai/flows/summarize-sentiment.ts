@@ -54,7 +54,17 @@ const analyzeSentimentFlow = ai.defineFlow(
     outputSchema: SentimentOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    try {
+      const {output} = await prompt(input);
+      if (!output) {
+        console.error('Sentiment analysis prompt did not return an output for input:', input.text);
+        return { sentiment: 'neutral', score: 0 }; // Fallback
+      }
+      return output;
+    } catch (error) {
+      console.error('Error in analyzeSentimentFlow during AI call for input "'+ input.text +'":', error);
+      return { sentiment: 'neutral', score: 0 }; // Fallback in case of any error
+    }
   }
 );
+
