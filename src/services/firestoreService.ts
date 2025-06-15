@@ -191,12 +191,18 @@ export async function createCommunityPost(userId: string, authorEmail: string, c
     const newDocSnap = await getDoc(doc(db, 'communityPosts', docRef.id));
     if (!newDocSnap.exists()) {
         console.error("Failed to fetch newly created community post from Firestore:", docRef.id);
-        // This case implies addDoc succeeded but getDoc failed, which is highly unlikely
-        // but good to handle. The user would still get an error.
         return null; 
     }
 
-    const savedData = newDocSnap.data() as StoredCommunityPost; // Data as it is in Firestore
+    const savedData = newDocSnap.data() as StoredCommunityPost;
+
+    let createdAtISO = new Date().toISOString(); // Fallback timestamp
+    if (savedData.createdAt && typeof (savedData.createdAt as Timestamp).toDate === 'function') {
+        createdAtISO = (savedData.createdAt as Timestamp).toDate().toISOString();
+    } else {
+        console.warn("Community post createdAt field was not a valid Firestore Timestamp after fetch. Original data:", savedData.createdAt);
+        // Using a fallback current timestamp. Ideally, serverTimestamp should always resolve to a Timestamp.
+    }
 
     console.log("Community post saved and fetched from Firestore with ID: ", newDocSnap.id);
     return {
@@ -204,13 +210,12 @@ export async function createCommunityPost(userId: string, authorEmail: string, c
         userId: savedData.userId,
         authorEmail: savedData.authorEmail,
         content: savedData.content,
-        createdAt: (savedData.createdAt as Timestamp).toDate().toISOString(), // Convert Timestamp to ISO string
+        createdAt: createdAtISO,
     };
 
   } catch (error) {
-    // This catch block handles errors from addDoc or getDoc
     console.error("Error in createCommunityPost (saving or fetching post) to Firestore: ", error);
-    return null; // This null is what triggers the "Gagal membuat postingan komunitas." in the API
+    return null;
   }
 }
 
@@ -219,14 +224,22 @@ export async function getCommunityPosts(): Promise<CommunityPost[]> {
     const q = query(collection(db, 'communityPosts'), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     const posts: CommunityPost[] = [];
-    querySnapshot.forEach((docSnap) => { // Renamed doc to docSnap for clarity
+    querySnapshot.forEach((docSnap) => { 
       const data = docSnap.data() as StoredCommunityPost;
+      
+      let createdAtISO = new Date().toISOString(); // Fallback timestamp
+      if (data.createdAt && typeof (data.createdAt as Timestamp).toDate === 'function') {
+          createdAtISO = (data.createdAt as Timestamp).toDate().toISOString();
+      } else {
+          console.warn(`Community post (ID: ${docSnap.id}) fetched with invalid createdAt field. Original data:`, data.createdAt);
+      }
+
       posts.push({
         id: docSnap.id,
         userId: data.userId,
         authorEmail: data.authorEmail,
         content: data.content,
-        createdAt: (data.createdAt as Timestamp).toDate().toISOString(), // Convert Firestore Timestamp to ISO string
+        createdAt: createdAtISO, 
       });
     });
     console.log(`Fetched ${posts.length} community posts from Firestore.`);
