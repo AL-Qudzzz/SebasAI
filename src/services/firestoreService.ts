@@ -146,11 +146,64 @@ export async function getMoodEntries(userId: string): Promise<MoodEntry[]> {
   }
 }
 
-// Note: Deleting mood entries might not be a common use case,
-// but can be added similarly to deleteJournalEntryFromFirestore if needed.
+// --- Community Posts ---
+// Interface for data structure in Firestore
+interface StoredCommunityPost {
+  userId: string;
+  authorEmail: string;
+  content: string;
+  createdAt: Timestamp;
+}
 
-// --- Generic function to get user-specific collection ---
-// export function getUserDataCollection<T>(userId: string, collectionName: string) {
-//   if (!userId) throw new Error("User ID is required.");
-//   return collection(db, 'users', userId, collectionName) as CollectionReference<T>;
-// }
+// Interface for data structure used in the frontend
+export interface CommunityPost {
+  id: string; // Firestore document ID
+  userId: string;
+  authorEmail: string;
+  content: string;
+  createdAt: string; // ISO string date for client-side
+}
+
+export async function createCommunityPost(userId: string, authorEmail: string, content: string): Promise<string | null> {
+  if (!userId || !authorEmail || !content.trim()) {
+    console.error("User ID, author email, and content are required to create a community post.");
+    return null;
+  }
+  try {
+    const postToSave: StoredCommunityPost = {
+      userId,
+      authorEmail,
+      content: content.trim(),
+      createdAt: serverTimestamp() as Timestamp,
+    };
+    const docRef = await addDoc(collection(db, 'communityPosts'), postToSave);
+    console.log("Community post saved to Firestore with ID: ", docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error("Error saving community post to Firestore: ", error);
+    return null;
+  }
+}
+
+export async function getCommunityPosts(): Promise<CommunityPost[]> {
+  try {
+    const q = query(collection(db, 'communityPosts'), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    const posts: CommunityPost[] = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data() as StoredCommunityPost;
+      posts.push({
+        id: doc.id,
+        userId: data.userId,
+        authorEmail: data.authorEmail,
+        content: data.content,
+        createdAt: (data.createdAt.toDate()).toISOString(), // Convert Firestore Timestamp to ISO string
+      });
+    });
+    console.log(`Fetched ${posts.length} community posts from Firestore.`);
+    return posts;
+  } catch (error) {
+    console.error("Error fetching community posts from Firestore: ", error);
+    return [];
+  }
+}
