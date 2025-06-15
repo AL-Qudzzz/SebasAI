@@ -1,13 +1,31 @@
+
 "use client"
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker } from "react-day-picker"
+import { DayPicker, type DateFormatter } from "react-day-picker"
+import { id } from 'date-fns/locale'; // Import Indonesian locale
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
+
+// Custom date formatter for Indonesian day names
+const formatDay: DateFormatter = (date) => {
+  const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+  return days[date.getDay()]!;
+};
+
+// Custom date formatter for Indonesian month names
+const formatCaption: DateFormatter = (date, options) => {
+  const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+  return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+};
+
 
 function Calendar({
   className,
@@ -61,6 +79,8 @@ function Calendar({
           <ChevronRight className={cn("h-4 w-4", className)} {...props} />
         ),
       }}
+      formatters={{ formatDay, formatCaption }}
+      locale={id} // Set locale to Indonesian
       {...props}
     />
   )
@@ -68,3 +88,4 @@ function Calendar({
 Calendar.displayName = "Calendar"
 
 export { Calendar }
+
