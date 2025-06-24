@@ -2,6 +2,14 @@
 
 SebasAI is an advanced AI-powered application built with modern web technologies to provide intelligent solutions and services.
 
+## Diagram Flow SebasAI
+### Complex Flowchart
+![Flowchart Image](https://i.imgur.com/uKVte5v.png)
+or open this link : https://i.imgur.com/uKVte5v.png
+### Simple Flow 
+![Flowchart Image](https://i.imgur.com/Y5Hio7d.png)
+or open this link : https://i.imgur.com/Y5Hio7d.png
+
 ## 🚀 Tech Stack
 
 ### Frontend
