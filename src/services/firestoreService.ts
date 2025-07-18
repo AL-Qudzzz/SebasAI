@@ -1,36 +1,38 @@
 
 // src/services/firestoreService.ts
 import { db } from '@/lib/firebase';
-import type { JournalEntry } from '@/app/journal/page';
-import type { MoodEntry } from '@/app/mood-tracker/page';
-import { collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp, FieldValue, getDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp, FieldValue, getDoc, where } from 'firebase/firestore';
 
 // --- Journal Entries ---
+export interface JournalEntry {
+  id: string;
+  title: string;
+  content: string;
+  date: string; // ISO string
+}
 
 interface StoredJournalEntry extends Omit<JournalEntry, 'date' | 'id'> {
   userId: string;
-  createdAt: Timestamp; // Firestore timestamp for creation
-  updatedAt: Timestamp; // Firestore timestamp for updates
-  originalDate: string; // The original date string from the client
+  createdAt: Timestamp | FieldValue; // Firestore timestamp for creation
+  updatedAt: Timestamp | FieldValue; // Firestore timestamp for updates
+  date: string; // The original date string from the client
 }
 
-export async function saveJournalEntry(userId: string, entry: JournalEntry): Promise<string | null> {
+export async function saveJournalEntry(userId: string, entry: Omit<JournalEntry, 'id'>): Promise<string | null> {
   if (!userId) {
     console.error("User ID is required to save journal entry to Firestore.");
     return null;
   }
   try {
     const entryToSave: StoredJournalEntry = {
-      title: entry.title,
-      content: entry.content,
+      ...entry,
       userId: userId,
-      originalDate: entry.date, // Keep the original date string
-      createdAt: serverTimestamp() as Timestamp, // Let Firestore handle this
-      updatedAt: serverTimestamp() as Timestamp, // And this
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     };
-    const docRef = await addDoc(collection(db, 'users', userId, 'journalEntries'), entryToSave);
+    const docRef = await addDoc(collection(db, 'journalEntries'), entryToSave);
     console.log("Journal entry saved to Firestore with ID: ", docRef.id);
-    return docRef.id; // Return Firestore document ID
+    return docRef.id;
   } catch (error) {
     console.error("Error saving journal entry to Firestore: ", error);
     return null;
@@ -43,8 +45,9 @@ export async function updateJournalEntryInFirestore(userId: string, entryId: str
     return false;
   }
   try {
-    const entryRef = doc(db, 'users', userId, 'journalEntries', entryId);
-    const dataToUpdate: Partial<StoredJournalEntry> = { ...entryData, updatedAt: serverTimestamp() as Timestamp };
+    const entryRef = doc(db, 'journalEntries', entryId);
+    // Add security check here in a real app to ensure doc belongs to user
+    const dataToUpdate = { ...entryData, updatedAt: serverTimestamp() };
     await updateDoc(entryRef, dataToUpdate);
     console.log("Journal entry updated in Firestore: ", entryId);
     return true;
@@ -54,20 +57,19 @@ export async function updateJournalEntryInFirestore(userId: string, entryId: str
   }
 }
 
-
 export async function getJournalEntries(userId: string): Promise<JournalEntry[]> {
   if (!userId) return [];
   try {
-    const q = query(collection(db, 'users', userId, 'journalEntries'), orderBy('originalDate', 'desc'));
+    const q = query(collection(db, 'journalEntries'), where("userId", "==", userId), orderBy('date', 'desc'));
     const querySnapshot = await getDocs(q);
     const entries: JournalEntry[] = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data() as StoredJournalEntry;
       entries.push({
-        id: doc.id, // Use Firestore doc ID as the entry ID
+        id: doc.id,
         title: data.title,
         content: data.content,
-        date: data.originalDate, // Use the original date string
+        date: data.date,
       });
     });
     console.log(`Fetched ${entries.length} journal entries from Firestore for user ${userId}`);
@@ -84,7 +86,8 @@ export async function deleteJournalEntryFromFirestore(userId: string, entryId: s
         return false;
     }
     try {
-        await deleteDoc(doc(db, 'users', userId, 'journalEntries', entryId));
+        // Add security check here in a real app to ensure doc belongs to user before deleting
+        await deleteDoc(doc(db, 'journalEntries', entryId));
         console.log("Journal entry deleted from Firestore: ", entryId);
         return true;
     } catch (error) {
@@ -94,27 +97,31 @@ export async function deleteJournalEntryFromFirestore(userId: string, entryId: s
 }
 
 // --- Mood Entries ---
-
-interface StoredMoodEntry extends Omit<MoodEntry, 'date' | 'id'> {
-  userId: string;
-  loggedAt: Timestamp; // Firestore timestamp
-  originalDate: string; // The original date string from the client
+export interface MoodEntry {
+  id: string;
+  mood: string; // Adjective
+  emoji: string; 
+  date: string; // ISO string
 }
 
-export async function saveMoodEntry(userId: string, entry: MoodEntry): Promise<string | null> {
+interface StoredMoodEntry extends Omit<MoodEntry, 'id'> {
+  userId: string;
+  date: string; // The original date string from the client
+  loggedAt: Timestamp | FieldValue;
+}
+
+export async function saveMoodEntry(userId: string, entry: Omit<MoodEntry, 'id'>): Promise<string | null> {
   if (!userId) {
     console.error("User ID is required to save mood entry to Firestore.");
     return null;
   }
   try {
      const entryToSave: StoredMoodEntry = {
-      mood: entry.mood,
-      emoji: entry.emoji,
+      ...entry,
       userId: userId,
-      originalDate: entry.date,
-      loggedAt: serverTimestamp() as Timestamp,
+      loggedAt: serverTimestamp(),
     };
-    const docRef = await addDoc(collection(db, 'users', userId, 'moodEntries'), entryToSave);
+    const docRef = await addDoc(collection(db, 'moodEntries'), entryToSave);
     console.log("Mood entry saved to Firestore with ID: ", docRef.id);
     return docRef.id;
   } catch (error) {
@@ -126,7 +133,7 @@ export async function saveMoodEntry(userId: string, entry: MoodEntry): Promise<s
 export async function getMoodEntries(userId: string): Promise<MoodEntry[]> {
   if (!userId) return [];
   try {
-    const q = query(collection(db, 'users', userId, 'moodEntries'), orderBy('originalDate', 'desc'));
+    const q = query(collection(db, 'moodEntries'), where("userId", "==", userId), orderBy('date', 'desc'));
     const querySnapshot = await getDocs(q);
     const entries: MoodEntry[] = [];
     querySnapshot.forEach((doc) => {
@@ -135,7 +142,7 @@ export async function getMoodEntries(userId: string): Promise<MoodEntry[]> {
         id: doc.id,
         mood: data.mood,
         emoji: data.emoji,
-        date: data.originalDate,
+        date: data.date,
       });
     });
     console.log(`Fetched ${entries.length} mood entries from Firestore for user ${userId}`);
@@ -145,6 +152,90 @@ export async function getMoodEntries(userId: string): Promise<MoodEntry[]> {
     return [];
   }
 }
+
+// --- Goals ---
+export interface Goal {
+  id: string;
+  title: string;
+  description?: string;
+  targetDate?: string; // ISO string
+  status: 'pending' | 'in-progress' | 'completed' | 'on-hold';
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+}
+
+interface StoredGoal extends Omit<Goal, 'id' | 'createdAt' | 'updatedAt'> {
+    userId: string;
+    createdAt: Timestamp | FieldValue;
+    updatedAt: Timestamp | FieldValue;
+}
+
+export async function saveGoal(userId: string, goal: Omit<Goal, 'id'>): Promise<string | null> {
+    if (!userId) return null;
+    try {
+        const goalToSave: StoredGoal = {
+            ...goal,
+            userId: userId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        }
+        const docRef = await addDoc(collection(db, 'goals'), goalToSave);
+        return docRef.id;
+    } catch (error) {
+        console.error("Error saving goal:", error);
+        return null;
+    }
+}
+
+export async function getGoals(userId: string): Promise<Goal[]> {
+    if (!userId) return [];
+    try {
+        const q = query(collection(db, 'goals'), where("userId", "==", userId), orderBy('updatedAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                title: data.title,
+                description: data.description,
+                targetDate: data.targetDate,
+                status: data.status,
+                createdAt: (data.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+                updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+            } as Goal;
+        });
+    } catch (error) {
+        console.error("Error getting goals:", error);
+        return [];
+    }
+}
+
+export async function updateGoal(userId: string, goalId: string, data: Partial<Goal>): Promise<boolean> {
+    if (!userId) return false;
+    try {
+        const goalRef = doc(db, 'goals', goalId);
+        // Add security check here
+        const dataToUpdate = {...data, updatedAt: serverTimestamp()};
+        await updateDoc(goalRef, dataToUpdate);
+        return true;
+    } catch (error) {
+        console.error("Error updating goal:", error);
+        return false;
+    }
+}
+
+export async function deleteGoal(userId: string, goalId: string): Promise<boolean> {
+    if (!userId) return false;
+    try {
+        // Add security check here
+        await deleteDoc(doc(db, 'goals', goalId));
+        return true;
+    } catch (error) {
+        console.error("Error deleting goal:", error);
+        return false;
+    }
+}
+
 
 // --- Community Posts ---
 // Interface for data structure in Firestore

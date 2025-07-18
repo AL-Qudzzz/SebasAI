@@ -1,21 +1,18 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PageTitle from '@/components/common/PageTitle';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList } from 'recharts';
-
-
-export interface MoodEntry {
-  id: string;
-  mood: string; // Adjective
-  emoji: string; 
-  date: string; // ISO string
-}
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
+import type { MoodEntry } from '@/services/firestoreService';
+import { saveMoodEntry, getMoodEntries } from '@/services/firestoreService';
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from 'lucide-react';
 
 const availableMoods = [
   { mood: 'Happy', emoji: '😄' },
@@ -27,23 +24,57 @@ const availableMoods = [
 ];
 
 export default function MoodTrackerPage() {
-  const [moods, setMoods] = useLocalStorage<MoodEntry[]>('moodEntries', []);
+  const { currentUser } = useAuth();
+  const { toast } = useToast();
+  const [moods, setMoods] = useState<MoodEntry[]>([]);
   const [selectedMood, setSelectedMood] = useState<{ mood: string; emoji: string } | null>(null);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchMoods = useCallback(async () => {
+    if (!currentUser) return;
+    setIsLoading(true);
+    const userMoods = await getMoodEntries(currentUser.uid);
+    setMoods(userMoods);
+    setIsLoading(false);
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchMoods();
+    } else {
+      setIsLoading(false);
+      setMoods([]); // Clear moods if user logs out
+    }
+  }, [currentUser, fetchMoods]);
+
 
   const handleMoodSelect = (moodChoice: { mood: string; emoji: string }) => {
     setSelectedMood(moodChoice);
   };
 
-  const handleSaveMood = () => {
+  const handleSaveMood = async () => {
     if (!selectedMood) return;
-    const newEntry: MoodEntry = {
-      id: Date.now().toString(),
+    if (!currentUser) {
+      toast({ title: "Error", description: "Anda harus login untuk menyimpan mood.", variant: "destructive" });
+      return;
+    }
+    
+    const newEntry: Omit<MoodEntry, 'id'> = {
       mood: selectedMood.mood,
       emoji: selectedMood.emoji,
       date: new Date().toISOString(),
     };
-    setMoods([...moods, newEntry]);
+
+    const newId = await saveMoodEntry(currentUser.uid, newEntry as MoodEntry);
+    
+    if(newId) {
+      toast({ title: "Sukses", description: "Mood berhasil disimpan!" });
+      await fetchMoods(); // Refresh moods from firestore
+    } else {
+      toast({ title: "Error", description: "Gagal menyimpan mood.", variant: "destructive" });
+    }
+    
     setSelectedMood(null); // Reset selection
   };
 
@@ -57,12 +88,15 @@ export default function MoodTrackerPage() {
       const data = Object.entries(moodCounts).map(([name, value]) => ({
         name,
         count: value,
-        // Find corresponding emoji for the mood to display in chart
         emoji: availableMoods.find(m => m.mood === name)?.emoji || ''
       }));
       setChartData(data);
     };
-    processMoodDataForChart();
+    if (moods.length > 0) {
+      processMoodDataForChart();
+    } else {
+      setChartData([]);
+    }
   }, [moods]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -71,24 +105,28 @@ export default function MoodTrackerPage() {
       return (
         <div className="p-2 bg-background border rounded-md shadow-lg">
           <p className="font-semibold">{`${moodEmoji || ''} ${label}`}</p>
-          <p className="text-sm text-muted-foreground">{`Count: ${payload[0].value}`}</p>
+          <p className="text-sm text-muted-foreground">{`Jumlah: ${payload[0].value}`}</p>
         </div>
       );
     }
     return null;
   };
   
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin" /></div>;
+  }
+  
   return (
     <div className="space-y-8">
       <PageTitle
         title="Mood Tracker"
-        description="How are you feeling today? Log your mood to track your emotional well-being over time."
+        description="Bagaimana perasaan Anda hari ini? Catat suasana hati Anda untuk melacak kesehatan emosional Anda dari waktu ke waktu."
       />
 
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="font-headline text-2xl text-primary">Log Your Mood</CardTitle>
-          <CardDescription>Select an emoji that best represents your current mood.</CardDescription>
+          <CardTitle className="font-headline text-2xl text-primary">Catat Mood Anda</CardTitle>
+          <CardDescription>Pilih emoji yang paling mewakili suasana hati Anda saat ini.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
@@ -109,9 +147,9 @@ export default function MoodTrackerPage() {
           </div>
           {selectedMood && (
             <div className="text-center">
-              <p className="text-lg">You selected: <span className="font-semibold text-primary">{selectedMood.emoji} {selectedMood.mood}</span></p>
+              <p className="text-lg">Anda memilih: <span className="font-semibold text-primary">{selectedMood.emoji} {selectedMood.mood}</span></p>
               <Button onClick={handleSaveMood} className="mt-4">
-                Save Mood
+                Simpan Mood
               </Button>
             </div>
           )}
@@ -120,12 +158,14 @@ export default function MoodTrackerPage() {
 
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="font-headline text-2xl text-primary">Mood History</CardTitle>
-          <CardDescription>A summary of your logged moods.</CardDescription>
+          <CardTitle className="font-headline text-2xl text-primary">Riwayat Mood</CardTitle>
+          <CardDescription>Ringkasan suasana hati yang telah Anda catat.</CardDescription>
         </CardHeader>
         <CardContent>
-          {moods.length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">No moods logged yet.</p>
+          {!currentUser ? (
+             <p className="text-muted-foreground text-center py-4">Login untuk melihat riwayat mood Anda.</p>
+          ) : moods.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4">Belum ada mood yang dicatat.</p>
           ) : (
             <>
               {chartData.length > 0 && (
@@ -145,7 +185,7 @@ export default function MoodTrackerPage() {
               )}
               <ScrollArea className="h-64 mt-6 pr-4">
                 <ul className="space-y-3">
-                  {moods.slice().reverse().map(entry => ( // Newest first
+                  {moods.slice().map(entry => ( // Firestore already returns sorted
                     <li key={entry.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-md">
                       <div>
                         <span className="text-2xl mr-3">{entry.emoji}</span>

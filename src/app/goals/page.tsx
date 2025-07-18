@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/auth-context';
 import PageTitle from '@/components/common/PageTitle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,10 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { cn } from '@/lib/utils';
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, PlusCircle, Edit3, Trash2, Save, XCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, PlusCircle, Edit3, Trash2, Save, XCircle, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,16 +26,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-
-export interface Goal {
-  id: string;
-  title: string;
-  description?: string;
-  targetDate?: string; // ISO string
-  status: 'pending' | 'in-progress' | 'completed' | 'on-hold';
-  createdAt: string; // ISO string
-  updatedAt: string; // ISO string
-}
+import type { Goal } from '@/services/firestoreService';
+import { getGoals, saveGoal, updateGoal, deleteGoal } from '@/services/firestoreService';
 
 type GoalStatus = Goal['status'];
 
@@ -63,9 +55,12 @@ const getStatusBadgeColor = (status: GoalStatus) => {
 
 
 export default function GoalsPage() {
-  const [goals, setGoals] = useLocalStorage<Goal[]>('userGoals', []);
+  const { currentUser } = useAuth();
+  const [goals, setGoals] = useState<Goal[]>([]);
   const { toast } = useToast();
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
 
@@ -74,6 +69,23 @@ export default function GoalsPage() {
   const [description, setDescription] = useState('');
   const [targetDate, setTargetDate] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<GoalStatus>('pending');
+
+  const fetchGoals = useCallback(async () => {
+    if (!currentUser) return;
+    setIsLoading(true);
+    const userGoals = await getGoals(currentUser.uid);
+    setGoals(userGoals);
+    setIsLoading(false);
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchGoals();
+    } else {
+      setIsLoading(false);
+      setGoals([]); // Clear goals if user logs out
+    }
+  }, [currentUser, fetchGoals]);
 
   useEffect(() => {
     if (editingGoal) {
@@ -95,27 +107,39 @@ export default function GoalsPage() {
     setEditingGoal(null);
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser) {
+      toast({ title: "Error", description: "Anda harus login untuk mengelola tujuan.", variant: "destructive" });
+      return;
+    }
     if (!title.trim()) {
       toast({ title: "Validasi Gagal", description: "Judul tujuan tidak boleh kosong.", variant: "destructive" });
       return;
     }
 
+    setIsSubmitting(true);
     const now = new Date().toISOString();
 
     if (editingGoal) {
       // Update existing goal
-      setGoals(goals.map(g => 
-        g.id === editingGoal.id 
-        ? { ...editingGoal, title, description, targetDate: targetDate?.toISOString(), status, updatedAt: now } 
-        : g
-      ));
-      toast({ title: "Sukses", description: "Tujuan berhasil diperbarui." });
+      const updatedData: Partial<Goal> = { 
+        title, 
+        description, 
+        targetDate: targetDate?.toISOString(), 
+        status, 
+        updatedAt: now 
+      };
+      const success = await updateGoal(currentUser.uid, editingGoal.id, updatedData);
+      if (success) {
+        toast({ title: "Sukses", description: "Tujuan berhasil diperbarui." });
+        await fetchGoals();
+      } else {
+        toast({ title: "Error", description: "Gagal memperbarui tujuan.", variant: "destructive" });
+      }
     } else {
       // Add new goal
-      const newGoal: Goal = {
-        id: Date.now().toString(),
+      const newGoal: Omit<Goal, 'id'> = {
         title,
         description,
         targetDate: targetDate?.toISOString(),
@@ -123,16 +147,30 @@ export default function GoalsPage() {
         createdAt: now,
         updatedAt: now,
       };
-      setGoals([...goals, newGoal]);
-      toast({ title: "Sukses", description: "Tujuan baru berhasil ditambahkan." });
+      const newId = await saveGoal(currentUser.uid, newGoal);
+      if (newId) {
+        toast({ title: "Sukses", description: "Tujuan baru berhasil ditambahkan." });
+        await fetchGoals();
+      } else {
+        toast({ title: "Error", description: "Gagal menyimpan tujuan baru.", variant: "destructive" });
+      }
     }
+    setIsSubmitting(false);
     resetForm();
     setIsFormOpen(false);
   };
 
-  const handleDeleteGoal = (goalId: string) => {
-    setGoals(goals.filter(g => g.id !== goalId));
-    toast({ title: "Sukses", description: "Tujuan berhasil dihapus." });
+  const handleDeleteGoal = async (goalId: string) => {
+    if (!currentUser) return;
+    setIsSubmitting(true);
+    const success = await deleteGoal(currentUser.uid, goalId);
+    if (success) {
+      toast({ title: "Sukses", description: "Tujuan berhasil dihapus." });
+      await fetchGoals();
+    } else {
+      toast({ title: "Error", description: "Gagal menghapus tujuan.", variant: "destructive" });
+    }
+    setIsSubmitting(false);
   };
 
   const handleOpenFormForEdit = (goal: Goal) => {
@@ -149,6 +187,14 @@ export default function GoalsPage() {
     resetForm();
     setIsFormOpen(false);
   };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin" /></div>;
+  }
+  
+  if (!currentUser) {
+    return <div className="text-center text-muted-foreground">Silakan login untuk menetapkan dan melacak tujuan Anda.</div>;
+  }
 
   return (
     <div className="space-y-8">
@@ -235,11 +281,11 @@ export default function GoalsPage() {
                 </div>
               </div>
               <div className="flex justify-end space-x-2 pt-2">
-                <Button type="button" variant="outline" onClick={handleCancelForm}>
+                <Button type="button" variant="outline" onClick={handleCancelForm} disabled={isSubmitting}>
                   Batal
                 </Button>
-                <Button type="submit">
-                  {editingGoal ? <Save className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (editingGoal ? <Save className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />)}
                   {editingGoal ? 'Simpan Perubahan' : 'Tambah Tujuan'}
                 </Button>
               </div>
@@ -276,12 +322,12 @@ export default function GoalsPage() {
               )}
               <CardFooter className="flex justify-end space-x-2 text-xs text-muted-foreground">
                  <span className="mr-auto">Diperbarui: {format(new Date(goal.updatedAt), "P p")}</span>
-                <Button variant="outline" size="sm" onClick={() => handleOpenFormForEdit(goal)}>
+                <Button variant="outline" size="sm" onClick={() => handleOpenFormForEdit(goal)} disabled={isSubmitting}>
                   <Edit3 className="mr-1 h-3 w-3" /> Edit
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm">
+                    <Button variant="destructive" size="sm" disabled={isSubmitting}>
                       <Trash2 className="mr-1 h-3 w-3" /> Hapus
                     </Button>
                   </AlertDialogTrigger>
@@ -294,7 +340,8 @@ export default function GoalsPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Batal</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleDeleteGoal(goal.id)}>
+                      <AlertDialogAction onClick={() => handleDeleteGoal(goal.id)} disabled={isSubmitting}>
+                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                         Ya, Hapus
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -308,4 +355,3 @@ export default function GoalsPage() {
     </div>
   );
 }
-
