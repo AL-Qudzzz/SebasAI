@@ -277,15 +277,18 @@ export async function createCommunityPost(userId: string, authorEmail: string, c
       bookmarkCount: 0,
     };
     const docRef = await addDoc(collection(db, 'communityPosts'), postToSave);
-    const newPostSnap = await getDoc(docRef);
-    if (!newPostSnap.exists()) {
-        throw new Error("Failed to fetch newly created post.");
-    }
-    const data = newPostSnap.data() as StoredCommunityPost;
+    
+    // Instead of re-fetching, construct the return object directly.
+    // This is more efficient and avoids potential race conditions.
     return {
-      id: newPostSnap.id,
-      ...data,
-      createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
+      id: docRef.id,
+      userId,
+      authorEmail,
+      content: content.trim(),
+      createdAt: new Date().toISOString(), // Use current date as a good approximation
+      replyCount: 0,
+      repostCount: 0,
+      bookmarkCount: 0,
     };
   } catch (error: any) {
     console.error("Error in createCommunityPost:", error);
@@ -434,3 +437,5 @@ export async function getReplies(postId: string): Promise<Reply[]> {
         return [];
     }
 }
+
+    
