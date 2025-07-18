@@ -1,4 +1,3 @@
-
 // src/services/firestoreService.ts
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp, FieldValue, getDoc, where, runTransaction, increment, getDocs as getSubDocs, writeBatch } from 'firebase/firestore';
@@ -277,24 +276,28 @@ export async function createCommunityPost(userId: string, authorEmail: string, c
     };
 
     const docRef = await addDoc(collection(db, 'communityPosts'), postToSave);
-    const newDocSnap = await getDoc(doc(db, 'communityPosts', docRef.id));
-    if (!newDocSnap.exists()) {
-        console.error("Failed to fetch newly created community post from Firestore:", docRef.id);
-        return null; 
-    }
-
-    const savedData = newDocSnap.data() as StoredCommunityPost;
-    const createdAtISO = (savedData.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString();
-
-    console.log("Community post saved and fetched from Firestore with ID: ", newDocSnap.id);
-    return {
-        id: newDocSnap.id,
-        ...savedData,
-        createdAt: createdAtISO,
+    
+    // To avoid a separate fetch, we'll construct the return object optimistically.
+    // The client will see the post immediately. The server timestamp will be resolved by Firestore.
+    // We'll use the current client date as a temporary placeholder for createdAt.
+    const newPost: CommunityPost = {
+      id: docRef.id,
+      userId,
+      authorEmail,
+      content: content.trim(),
+      createdAt: new Date().toISOString(), // This will be updated on the next fetch with the server time
+      replyCount: 0,
+      repostCount: 0,
+      bookmarkCount: 0,
     };
 
+    console.log("Community post saved to Firestore with ID: ", docRef.id);
+    return newPost;
+
   } catch (error) {
+    // This is a critical error, likely from security rules or config issues.
     console.error("CRITICAL: Error in createCommunityPost. This could be due to Firestore rules or Firebase config. Details: ", error);
+    // Returning null will trigger the 500 error on the API route.
     return null;
   }
 }
@@ -305,6 +308,7 @@ export async function getCommunityPosts(): Promise<CommunityPost[]> {
     const querySnapshot = await getDocs(q);
     const posts: CommunityPost[] = querySnapshot.docs.map((docSnap) => { 
       const data = docSnap.data() as StoredCommunityPost;
+      // Ensure createdAt is always a string, falling back to now if it's null from the server for some reason.
       const createdAtISO = (data.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString();
       return {
         id: docSnap.id,
