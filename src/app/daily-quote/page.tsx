@@ -91,7 +91,7 @@ export default function DailyQuotePage() {
       )}
 
       {error && !isLoading && (
-        <Card className="border-destructive bg-destructive/10 max-w-2xl mx-auto">
+        <Card className="border-destructive bg-destructive/10 w-full">
           <CardHeader>
             <CardTitle className="font-headline text-xl text-destructive-foreground">Error</CardTitle>
           </CardHeader>
@@ -102,7 +102,7 @@ export default function DailyQuotePage() {
       )}
 
       {quote && !isLoading && !error && (
-        <Card className="shadow-xl bg-card max-w-2xl mx-auto rounded-lg overflow-hidden">
+        <Card className="shadow-xl bg-card w-full rounded-lg overflow-hidden">
           <CardHeader className="bg-primary/10 p-6">
             <CardTitle className="font-headline text-2xl text-primary flex items-center justify-center">
               <CustomQuoteIcon />
@@ -119,7 +119,7 @@ export default function DailyQuotePage() {
       )}
 
       {!isLoading && !quote && !error && (
-         <Card className="max-w-2xl mx-auto">
+         <Card className="w-full">
             <CardContent className="pt-6 text-center">
                 <p className="text-muted-foreground">Klik tombol di atas untuk mengambil kutipan harian.</p>
             </CardContent>

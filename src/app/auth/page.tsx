@@ -100,7 +100,7 @@ export default function AuthPage() {
         description="Access your Sebas account or create a new one."
         className="text-center"
       />
-      <Card className="w-full max-w-md shadow-xl">
+      <Card className="w-full shadow-xl">
         <CardHeader className="items-center"> {/* Added items-center here */}
           <CardTitle className="text-2xl text-center">
             {activeTab === 'login' ? 'Welcome Back!' : 'Create Account'}

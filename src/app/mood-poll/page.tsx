@@ -117,7 +117,7 @@ export default function MoodPollPage() {
       )}
 
       {error && !isLoading && (
-        <Card className="border-destructive bg-destructive/10 max-w-2xl mx-auto">
+        <Card className="border-destructive bg-destructive/10 w-full">
           <CardHeader>
             <CardTitle className="font-headline text-xl text-destructive-foreground">Error</CardTitle>
           </CardHeader>
