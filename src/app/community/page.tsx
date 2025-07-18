@@ -76,7 +76,11 @@ export default function CommunityPage() {
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPostContent.trim() || !currentUser) {
+    if (!currentUser) {
+      toast({ title: "Otentikasi Gagal", description: "Anda harus login untuk membuat postingan.", variant: "destructive" });
+      return;
+    }
+    if (!newPostContent.trim()) {
       toast({ title: "Validasi Gagal", description: "Konten postingan tidak boleh kosong.", variant: "destructive" });
       return;
     }
@@ -92,7 +96,7 @@ export default function CommunityPage() {
         }),
       });
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({ error: 'Gagal membuat postingan.' }));
+        const errData = await response.json().catch(() => ({ error: 'Gagal membuat postingan. Periksa log server untuk detail.' }));
         throw new Error(errData.error);
       }
       const newPost: CommunityPost = await response.json();
@@ -279,3 +283,4 @@ export default function CommunityPage() {
     </div>
   );
 }
+

@@ -294,7 +294,7 @@ export async function createCommunityPost(userId: string, authorEmail: string, c
     };
 
   } catch (error) {
-    console.error("Error in createCommunityPost (saving or fetching post) to Firestore: ", error);
+    console.error("CRITICAL: Error in createCommunityPost. This could be due to Firestore rules or Firebase config. Details: ", error);
     return null;
   }
 }
