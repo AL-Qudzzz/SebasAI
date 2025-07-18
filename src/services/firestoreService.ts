@@ -1,3 +1,4 @@
+
 // src/services/firestoreService.ts
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp, FieldValue, getDoc, where, runTransaction, increment, getDocs as getSubDocs, writeBatch } from 'firebase/firestore';
@@ -278,8 +279,6 @@ export async function createCommunityPost(userId: string, authorEmail: string, c
     const docRef = await addDoc(collection(db, 'communityPosts'), postToSave);
     
     // To avoid a separate fetch, we'll construct the return object optimistically.
-    // The client will see the post immediately. The server timestamp will be resolved by Firestore.
-    // We'll use the current client date as a temporary placeholder for createdAt.
     const newPost: CommunityPost = {
       id: docRef.id,
       userId,
@@ -294,10 +293,11 @@ export async function createCommunityPost(userId: string, authorEmail: string, c
     console.log("Community post saved to Firestore with ID: ", docRef.id);
     return newPost;
 
-  } catch (error) {
-    // This is a critical error, likely from security rules or config issues.
-    console.error("CRITICAL: Error in createCommunityPost. This could be due to Firestore rules or Firebase config. Details: ", error);
-    // Returning null will trigger the 500 error on the API route.
+  } catch (error: any) {
+    console.error("CRITICAL: Error in createCommunityPost. This is likely a Firestore Security Rules issue.", error.message);
+    if(error.code) {
+        console.error("Firestore error code:", error.code);
+    }
     return null;
   }
 }
@@ -348,10 +348,10 @@ export async function interactWithPost(userId: string, postId: string, interacti
         transaction.delete(interactionRef);
         transaction.update(postRef, { [countField]: increment(-1) });
         userHasInteracted = false;
-        return currentCount - 1;
+        return currentCount > 0 ? currentCount - 1 : 0;
       } else {
         // User is performing the interaction
-        transaction.set(interactionRef, { interactedAt: serverTimestamp() });
+        transaction.set(interactionRef, { interactedAt: serverTimestamp(), userId: userId });
         transaction.update(postRef, { [countField]: increment(1) });
         userHasInteracted = true;
         return currentCount + 1;
@@ -389,3 +389,5 @@ export async function getUserPostInteractions(userId: string, postIds: string[])
       return { reposted: [], bookmarked: [] };
   }
 }
+
+    
