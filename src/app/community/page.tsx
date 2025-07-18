@@ -5,21 +5,137 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import PageTitle from '@/components/common/PageTitle';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, MessageSquareText, Send, MessageCircle, Repeat2, Bookmark, Share2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Send, MessageSquareText } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import type { CommunityPost } from '@/services/firestoreService';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import type { CommunityPost, Reply } from '@/services/firestoreService';
+import PostCard from '@/components/community/PostCard';
 
-
-type InteractionType = 'repost' | 'bookmark';
 interface UserInteractions {
   reposted: Set<string>;
   bookmarked: Set<string>;
 }
+
+// --- Sub-components for better organization ---
+
+function CreatePostForm({
+  currentUser,
+  onPostCreated
+}: {
+  currentUser: any;
+  onPostCreated: (newPost: CommunityPost) => void;
+}) {
+  const [newPostContent, setNewPostContent] = useState('');
+  const [isSubmittingPost, setIsSubmittingPost] = useState(false);
+  const { toast } = useToast();
+
+  const handleCreatePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) {
+      toast({ title: "Otentikasi Gagal", description: "Anda harus login untuk membuat postingan.", variant: "destructive" });
+      return;
+    }
+    if (!newPostContent.trim()) {
+      toast({ title: "Validasi Gagal", description: "Konten postingan tidak boleh kosong.", variant: "destructive" });
+      return;
+    }
+    setIsSubmittingPost(true);
+    try {
+      const response = await fetch('/api/community/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.uid,
+          authorEmail: currentUser.email || 'Anonim',
+          content: newPostContent,
+        }),
+      });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: 'Gagal membuat postingan. Periksa log server untuk detail.' }));
+        throw new Error(errData.error);
+      }
+      const newPost: CommunityPost = await response.json();
+      onPostCreated(newPost);
+      setNewPostContent('');
+      toast({ title: "Sukses", description: "Postingan berhasil dibuat!" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Gagal membuat postingan.", variant: "destructive" });
+    } finally {
+      setIsSubmittingPost(false);
+    }
+  };
+
+  return (
+    <Card className="shadow-lg">
+      <CardHeader>
+        <CardTitle className="font-headline text-xl text-primary">Buat Postingan Baru</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleCreatePost} className="space-y-4">
+          <Textarea
+            placeholder={`Bagikan pemikiranmu, ${currentUser.email?.split('@')[0] || 'Pengguna'}...`}
+            value={newPostContent}
+            onChange={(e) => setNewPostContent(e.target.value)}
+            rows={3}
+            required
+            className="min-h-[80px]"
+          />
+          <Button type="submit" disabled={isSubmittingPost || !newPostContent.trim()} className="w-full sm:w-auto">
+            {isSubmittingPost ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+            Kirim Postingan
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CommunityFeed({
+    posts,
+    currentUser,
+    userInteractions,
+    onInteraction,
+    onReplyCreated,
+}: {
+    posts: CommunityPost[];
+    currentUser: any;
+    userInteractions: UserInteractions;
+    onInteraction: (postId: string, interactionType: 'repost' | 'bookmark') => void;
+    onReplyCreated: (postId: string, newReply: Reply) => void;
+}) {
+    if (posts.length === 0) {
+        return (
+            <Card>
+                <CardContent className="pt-6 text-center">
+                    <MessageSquareText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-lg text-muted-foreground">Belum ada postingan di komunitas.</p>
+                    <p className="text-sm text-muted-foreground">Jadilah yang pertama untuk berbagi!</p>
+                </CardContent>
+            </Card>
+        );
+    }
+    
+    return (
+        <div className="space-y-4">
+            <h2 className="text-2xl font-headline text-primary">Postingan Komunitas</h2>
+            {posts.map((post) => (
+                <PostCard
+                    key={post.id}
+                    post={post}
+                    currentUser={currentUser}
+                    userInteractions={userInteractions}
+                    onInteraction={onInteraction}
+                    onReplyCreated={onReplyCreated}
+                />
+            ))}
+        </div>
+    );
+}
+
+
+// --- Main Page Component ---
 
 export default function CommunityPage() {
   const router = useRouter();
@@ -27,9 +143,7 @@ export default function CommunityPage() {
   const { toast } = useToast();
 
   const [posts, setPosts] = useState<CommunityPost[]>([]);
-  const [newPostContent, setNewPostContent] = useState('');
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
-  const [isSubmittingPost, setIsSubmittingPost] = useState(false);
   const [userInteractions, setUserInteractions] = useState<UserInteractions>({ reposted: new Set(), bookmarked: new Set() });
 
   const fetchPosts = useCallback(async (userId?: string | null) => {
@@ -58,7 +172,6 @@ export default function CommunityPage() {
           });
         }
       }
-
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Gagal memuat postingan.", variant: "destructive" });
     } finally {
@@ -73,95 +186,69 @@ export default function CommunityPage() {
       fetchPosts(currentUser.uid);
     }
   }, [currentUser, loadingAuthState, router, fetchPosts]);
-
-  const handleCreatePost = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser) {
-      toast({ title: "Otentikasi Gagal", description: "Anda harus login untuk membuat postingan.", variant: "destructive" });
-      return;
-    }
-    if (!newPostContent.trim()) {
-      toast({ title: "Validasi Gagal", description: "Konten postingan tidak boleh kosong.", variant: "destructive" });
-      return;
-    }
-    setIsSubmittingPost(true);
-    try {
-      const response = await fetch('/api/community/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: currentUser.uid,
-          authorEmail: currentUser.email || 'Anonim',
-          content: newPostContent,
-        }),
-      });
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({ error: 'Gagal membuat postingan. Periksa log server untuk detail.' }));
-        throw new Error(errData.error);
-      }
-      const newPost: CommunityPost = await response.json();
-      setPosts(prevPosts => [newPost, ...prevPosts]);
-      setNewPostContent('');
-      toast({ title: "Sukses", description: "Postingan berhasil dibuat!" });
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Gagal membuat postingan.", variant: "destructive" });
-    } finally {
-      setIsSubmittingPost(false);
-    }
-  };
   
-  const handleInteraction = async (postId: string, interactionType: InteractionType) => {
+  const handleInteraction = async (postId: string, interactionType: 'repost' | 'bookmark') => {
     if (!currentUser) return;
 
+    const originalInteractions = { ...userInteractions };
+    const originalPosts = [...posts];
+
+    // Optimistic UI Update
+    setPosts(prevPosts => prevPosts.map(p => {
+        if (p.id === postId) {
+            const currentCount = p[`${interactionType}Count`] || 0;
+            const hasInteracted = userInteractions[interactionType === 'repost' ? 'reposted' : 'bookmarked'].has(postId);
+            return {
+                ...p,
+                [`${interactionType}Count`]: hasInteracted ? currentCount - 1 : currentCount + 1,
+            };
+        }
+        return p;
+    }));
+    setUserInteractions(prev => {
+        const newSet = new Set(prev[interactionType === 'repost' ? 'reposted' : 'bookmarked']);
+        if (newSet.has(postId)) {
+            newSet.delete(postId);
+        } else {
+            newSet.add(postId);
+        }
+        return { ...prev, [interactionType === 'repost' ? 'reposted' : 'bookmarked']: newSet };
+    });
+
+    // API Call
     try {
         const response = await fetch(`/api/community/posts/interactions`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: currentUser.uid, postId, interactionType }),
         });
-
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({ error: 'Gagal berinteraksi dengan postingan.' }));
-            throw new Error(errData.error);
-        }
-
-        const { newCount, userHasInteracted } = await response.json();
-        
-        // Optimistically update UI
-        setPosts(posts.map(p => {
-            if (p.id === postId) {
-                const updatedPost = { ...p };
-                if (interactionType === 'repost') updatedPost.repostCount = newCount;
-                if (interactionType === 'bookmark') updatedPost.bookmarkCount = newCount;
-                return updatedPost;
-            }
-            return p;
-        }));
-
-        setUserInteractions(prev => {
-            const newInteractions = { ...prev };
-            const set = newInteractions[interactionType === 'repost' ? 'reposted' : 'bookmarked'];
-            if (userHasInteracted) {
-                set.add(postId);
-            } else {
-                set.delete(postId);
-            }
-            return newInteractions;
-        });
-
+        if (!response.ok) throw new Error("Gagal memperbarui interaksi.");
+        // Data is already updated optimistically, can re-sync if needed but not necessary for this interaction
     } catch (error: any) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
+        // Rollback on error
+        setUserInteractions(originalInteractions);
+        setPosts(originalPosts);
     }
   };
 
-  const handleReply = (postId: string) => {
-    toast({ title: "Fitur Dalam Pengembangan", description: "Fitur balasan akan segera hadir!" });
-  };
-  
-  const handleShare = (postId: string) => {
-    toast({ title: "Fitur Dalam Pengembangan", description: "Fitur berbagi akan segera hadir!" });
+  const handlePostCreated = (newPost: CommunityPost) => {
+    setPosts(prevPosts => [newPost, ...prevPosts]);
   };
 
+  const handleReplyCreated = (postId: string, newReply: Reply) => {
+    setPosts(prevPosts => prevPosts.map(post => {
+        if (post.id === postId) {
+            return {
+                ...post,
+                replyCount: post.replyCount + 1,
+                replies: [...(post.replies || []), newReply],
+            };
+        }
+        return post;
+    }));
+  };
+  
   if (loadingAuthState) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
@@ -186,101 +273,22 @@ export default function CommunityPage() {
         description="Terhubung, berbagi, dan dapatkan dukungan dari pengguna lain."
       />
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="font-headline text-xl text-primary">Buat Postingan Baru</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleCreatePost} className="space-y-4">
-            <Textarea
-              placeholder={`Bagikan pemikiranmu, ${currentUser.email?.split('@')[0] || 'Pengguna'}...`}
-              value={newPostContent}
-              onChange={(e) => setNewPostContent(e.target.value)}
-              rows={3}
-              required
-              className="min-h-[80px]"
-            />
-            <Button type="submit" disabled={isSubmittingPost || !newPostContent.trim()} className="w-full sm:w-auto">
-              {isSubmittingPost ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-              Kirim Postingan
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <CreatePostForm currentUser={currentUser} onPostCreated={handlePostCreated} />
 
-      {isLoadingPosts && (
+      {isLoadingPosts ? (
         <div className="flex justify-center items-center py-10">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
           <p className="ml-2 text-muted-foreground">Memuat postingan...</p>
         </div>
-      )}
-
-      {!isLoadingPosts && posts.length === 0 && (
-        <Card>
-            <CardContent className="pt-6 text-center">
-                <MessageSquareText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <p className="text-lg text-muted-foreground">Belum ada postingan di komunitas.</p>
-                <p className="text-sm text-muted-foreground">Jadilah yang pertama untuk berbagi!</p>
-            </CardContent>
-        </Card>
-      )}
-
-      {!isLoadingPosts && posts.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-2xl font-headline text-primary">Postingan Komunitas</h2>
-          {posts.map((post) => (
-            <Card key={post.id} className="shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-center space-x-3">
-                    <Avatar className="h-10 w-10">
-                        <AvatarImage src={`https://placehold.co/40x40.png?text=${post.authorEmail?.[0]?.toUpperCase() ?? 'A'}`} alt={post.authorEmail} data-ai-hint="avatar user"/>
-                        <AvatarFallback>{post.authorEmail?.[0]?.toUpperCase() ?? 'A'}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <CardTitle className="text-base font-medium">{post.authorEmail}</CardTitle>
-                        <CardDescription className="text-xs">
-                            {new Date(post.createdAt).toLocaleString()}
-                        </CardDescription>
-                    </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap text-foreground/90">{post.content}</p>
-              </CardContent>
-              <CardFooter className="flex items-center justify-between border-t pt-2">
-                 <div className="flex space-x-4 text-muted-foreground">
-                    <Button variant="ghost" size="sm" className="flex items-center space-x-2" onClick={() => handleReply(post.id)}>
-                        <MessageCircle className="w-4 h-4" />
-                        <span>{post.replyCount || 0}</span>
-                    </Button>
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className={cn("flex items-center space-x-2", { 'text-green-500': userInteractions.reposted.has(post.id) })}
-                        onClick={() => handleInteraction(post.id, 'repost')}
-                    >
-                        <Repeat2 className={cn("w-4 h-4", { 'fill-current': userInteractions.reposted.has(post.id) })} />
-                        <span>{post.repostCount || 0}</span>
-                    </Button>
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className={cn("flex items-center space-x-2", { 'text-yellow-500': userInteractions.bookmarked.has(post.id) })}
-                        onClick={() => handleInteraction(post.id, 'bookmark')}
-                    >
-                        <Bookmark className={cn("w-4 h-4", { 'fill-current': userInteractions.bookmarked.has(post.id) })} />
-                        <span>{post.bookmarkCount || 0}</span>
-                    </Button>
-                 </div>
-                 <Button variant="ghost" size="icon" onClick={() => handleShare(post.id)}>
-                    <Share2 className="w-4 h-4" />
-                 </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+      ) : (
+        <CommunityFeed
+          posts={posts}
+          currentUser={currentUser}
+          userInteractions={userInteractions}
+          onInteraction={handleInteraction}
+          onReplyCreated={handleReplyCreated}
+        />
       )}
     </div>
   );
 }
-

@@ -1,7 +1,7 @@
 
 // src/services/firestoreService.ts
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp, FieldValue, getDoc, where, runTransaction, increment, getDocs as getSubDocs, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp, FieldValue, getDoc, where, runTransaction, increment } from 'firebase/firestore';
 
 // --- Journal Entries ---
 export interface JournalEntry {
@@ -13,9 +13,9 @@ export interface JournalEntry {
 
 interface StoredJournalEntry extends Omit<JournalEntry, 'date' | 'id'> {
   userId: string;
-  createdAt: Timestamp | FieldValue; // Firestore timestamp for creation
-  updatedAt: Timestamp | FieldValue; // Firestore timestamp for updates
-  date: string; // The original date string from the client
+  createdAt: Timestamp | FieldValue;
+  updatedAt: Timestamp | FieldValue;
+  date: string; 
 }
 
 export async function saveJournalEntry(userId: string, entry: Omit<JournalEntry, 'id'>): Promise<string | null> {
@@ -46,7 +46,6 @@ export async function updateJournalEntryInFirestore(userId: string, entryId: str
   }
   try {
     const entryRef = doc(db, 'journalEntries', entryId);
-    // Add security check here in a real app to ensure doc belongs to user
     const dataToUpdate = { ...entryData, updatedAt: serverTimestamp() };
     await updateDoc(entryRef, dataToUpdate);
     console.log("Journal entry updated in Firestore: ", entryId);
@@ -86,7 +85,6 @@ export async function deleteJournalEntryFromFirestore(userId: string, entryId: s
         return false;
     }
     try {
-        // Add security check here in a real app to ensure doc belongs to user before deleting
         await deleteDoc(doc(db, 'journalEntries', entryId));
         console.log("Journal entry deleted from Firestore: ", entryId);
         return true;
@@ -99,14 +97,14 @@ export async function deleteJournalEntryFromFirestore(userId: string, entryId: s
 // --- Mood Entries ---
 export interface MoodEntry {
   id: string;
-  mood: string; // Adjective
+  mood: string;
   emoji: string; 
-  date: string; // ISO string
+  date: string;
 }
 
 interface StoredMoodEntry extends Omit<MoodEntry, 'id'> {
   userId: string;
-  date: string; // The original date string from the client
+  date: string;
   loggedAt: Timestamp | FieldValue;
 }
 
@@ -158,10 +156,10 @@ export interface Goal {
   id: string;
   title: string;
   description?: string;
-  targetDate?: string; // ISO string
+  targetDate?: string;
   status: 'pending' | 'in-progress' | 'completed' | 'on-hold';
-  createdAt: string; // ISO string
-  updatedAt: string; // ISO string
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface StoredGoal extends Omit<Goal, 'id' | 'createdAt' | 'updatedAt'> {
@@ -214,7 +212,6 @@ export async function updateGoal(userId: string, goalId: string, data: Partial<G
     if (!userId) return false;
     try {
         const goalRef = doc(db, 'goals', goalId);
-        // Add security check here
         const dataToUpdate = {...data, updatedAt: serverTimestamp()};
         await updateDoc(goalRef, dataToUpdate);
         return true;
@@ -227,7 +224,6 @@ export async function updateGoal(userId: string, goalId: string, data: Partial<G
 export async function deleteGoal(userId: string, goalId: string): Promise<boolean> {
     if (!userId) return false;
     try {
-        // Add security check here
         await deleteDoc(doc(db, 'goals', goalId));
         return true;
     } catch (error) {
@@ -236,37 +232,42 @@ export async function deleteGoal(userId: string, goalId: string): Promise<boolea
     }
 }
 
-
 // --- Community Posts ---
+export interface Reply {
+  id: string;
+  userId: string;
+  authorEmail: string;
+  content: string;
+  createdAt: string; // ISO string
+}
+export interface CommunityPost {
+  id: string;
+  userId: string;
+  authorEmail: string;
+  content: string;
+  createdAt: string; // ISO string
+  replyCount: number;
+  repostCount: number;
+  bookmarkCount: number;
+  replies?: Reply[];
+}
+
 interface StoredCommunityPost {
   userId: string;
   authorEmail: string;
   content: string;
   createdAt: Timestamp;
-  replyCount?: number;
-  repostCount?: number;
-  bookmarkCount?: number;
-}
-
-export interface CommunityPost extends Omit<StoredCommunityPost, 'createdAt'> {
-  id: string;
-  createdAt: string; // ISO string
-}
-
-interface NewCommunityPostData extends Omit<CommunityPost, 'id' | 'createdAt' | 'replyCount' | 'repostCount' | 'bookmarkCount'> {
-  createdAt: FieldValue;
   replyCount: number;
   repostCount: number;
   bookmarkCount: number;
 }
-
 export async function createCommunityPost(userId: string, authorEmail: string, content: string): Promise<CommunityPost | null> {
   if (!userId || !authorEmail || !content.trim()) {
     console.error("User ID, author email, and content are required for createCommunityPost.");
     return null;
   }
   try {
-    const postToSave: NewCommunityPostData = {
+    const postToSave = {
       userId,
       authorEmail,
       content: content.trim(),
@@ -275,29 +276,19 @@ export async function createCommunityPost(userId: string, authorEmail: string, c
       repostCount: 0,
       bookmarkCount: 0,
     };
-
     const docRef = await addDoc(collection(db, 'communityPosts'), postToSave);
-    
-    // To avoid a separate fetch, we'll construct the return object optimistically.
-    const newPost: CommunityPost = {
-      id: docRef.id,
-      userId,
-      authorEmail,
-      content: content.trim(),
-      createdAt: new Date().toISOString(), // This will be updated on the next fetch with the server time
-      replyCount: 0,
-      repostCount: 0,
-      bookmarkCount: 0,
-    };
-
-    console.log("Community post saved to Firestore with ID: ", docRef.id);
-    return newPost;
-
-  } catch (error: any) {
-    console.error("CRITICAL: Error in createCommunityPost. This is likely a Firestore Security Rules issue.", error.message);
-    if(error.code) {
-        console.error("Firestore error code:", error.code);
+    const newPostSnap = await getDoc(docRef);
+    if (!newPostSnap.exists()) {
+        throw new Error("Failed to fetch newly created post.");
     }
+    const data = newPostSnap.data() as StoredCommunityPost;
+    return {
+      id: newPostSnap.id,
+      ...data,
+      createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
+    };
+  } catch (error: any) {
+    console.error("Error in createCommunityPost:", error);
     return null;
   }
 }
@@ -308,7 +299,6 @@ export async function getCommunityPosts(): Promise<CommunityPost[]> {
     const querySnapshot = await getDocs(q);
     const posts: CommunityPost[] = querySnapshot.docs.map((docSnap) => { 
       const data = docSnap.data() as StoredCommunityPost;
-      // Ensure createdAt is always a string, falling back to now if it's null from the server for some reason.
       const createdAtISO = (data.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString();
       return {
         id: docSnap.id,
@@ -323,7 +313,6 @@ export async function getCommunityPosts(): Promise<CommunityPost[]> {
     return [];
   }
 }
-
 // --- Post Interactions ---
 export type InteractionType = 'repost' | 'bookmark';
 export async function interactWithPost(userId: string, postId: string, interactionType: InteractionType) {
@@ -344,13 +333,11 @@ export async function interactWithPost(userId: string, postId: string, interacti
 
       let currentCount = postDoc.data()[countField] || 0;
       if (interactionDoc.exists()) {
-        // User is undoing the interaction
         transaction.delete(interactionRef);
         transaction.update(postRef, { [countField]: increment(-1) });
         userHasInteracted = false;
         return currentCount > 0 ? currentCount - 1 : 0;
       } else {
-        // User is performing the interaction
         transaction.set(interactionRef, { interactedAt: serverTimestamp(), userId: userId });
         transaction.update(postRef, { [countField]: increment(1) });
         userHasInteracted = true;
@@ -371,10 +358,7 @@ export async function getUserPostInteractions(userId: string, postIds: string[])
   if (!userId || postIds.length === 0) {
     return { reposted: [], bookmarked: [] };
   }
-
   try {
-    // This is less efficient but works for smaller scales.
-    // For large scales, consider a different data model or server-side aggregation.
     for (const postId of postIds) {
       const repostRef = doc(db, 'communityPosts', postId, 'reposts', userId);
       const bookmarkRef = doc(db, 'communityPosts', postId, 'bookmarks', userId);
@@ -382,7 +366,6 @@ export async function getUserPostInteractions(userId: string, postIds: string[])
       if (repostSnap.exists()) reposted.add(postId);
       if (bookmarkSnap.exists()) bookmarked.add(postId);
     }
-
     return { reposted: Array.from(reposted), bookmarked: Array.from(bookmarked) };
   } catch (error) {
       console.error("Error fetching user post interactions:", error);
@@ -390,4 +373,64 @@ export async function getUserPostInteractions(userId: string, postIds: string[])
   }
 }
 
-    
+// --- Replies ---
+export async function createReply(postId: string, userId: string, authorEmail: string, content: string): Promise<Reply | null> {
+    if (!postId || !userId || !authorEmail || !content.trim()) {
+        console.error("All fields are required to create a reply.");
+        return null;
+    }
+    try {
+        const postRef = doc(db, 'communityPosts', postId);
+        const repliesCollectionRef = collection(postRef, 'replies');
+        
+        const replyToSave = {
+            userId,
+            authorEmail,
+            content,
+            createdAt: serverTimestamp(),
+        };
+
+        const replyDocRef = await addDoc(repliesCollectionRef, replyToSave);
+        await updateDoc(postRef, { replyCount: increment(1) });
+        
+        const newReplySnap = await getDoc(replyDocRef);
+        if (!newReplySnap.exists()) {
+            throw new Error("Failed to fetch newly created reply.");
+        }
+        const data = newReplySnap.data();
+
+        return {
+            id: newReplySnap.id,
+            userId,
+            authorEmail,
+            content,
+            createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
+        };
+    } catch (error) {
+        console.error("Error creating reply:", error);
+        return null;
+    }
+}
+
+export async function getReplies(postId: string): Promise<Reply[]> {
+    if (!postId) return [];
+    try {
+        const repliesCollectionRef = collection(db, 'communityPosts', postId, 'replies');
+        const q = query(repliesCollectionRef, orderBy('createdAt', 'asc'));
+        const querySnapshot = await getDocs(q);
+
+        return querySnapshot.docs.map(docSnap => {
+            const data = docSnap.data();
+            return {
+                id: docSnap.id,
+                userId: data.userId,
+                authorEmail: data.authorEmail,
+                content: data.content,
+                createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching replies:", error);
+        return [];
+    }
+}
