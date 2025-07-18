@@ -1,7 +1,7 @@
 
 // src/services/firestoreService.ts
 import { db } from '@/lib/firebase';
-import { collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp, FieldValue, getDoc, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc, serverTimestamp, Timestamp, FieldValue, getDoc, where, runTransaction, increment, getDocs as getSubDocs, writeBatch } from 'firebase/firestore';
 
 // --- Journal Entries ---
 export interface JournalEntry {
@@ -238,29 +238,26 @@ export async function deleteGoal(userId: string, goalId: string): Promise<boolea
 
 
 // --- Community Posts ---
-// Interface for data structure in Firestore
 interface StoredCommunityPost {
   userId: string;
   authorEmail: string;
   content: string;
-  createdAt: Timestamp; // Will be a Firestore Timestamp object
+  createdAt: Timestamp;
+  replyCount?: number;
+  repostCount?: number;
+  bookmarkCount?: number;
 }
 
-// Interface for data structure used in the frontend and returned by API
-export interface CommunityPost {
-  id: string; // Firestore document ID
-  userId: string;
-  authorEmail: string;
-  content: string;
-  createdAt: string; // ISO string date for client-side
+export interface CommunityPost extends Omit<StoredCommunityPost, 'createdAt'> {
+  id: string;
+  createdAt: string; // ISO string
 }
 
-// Data structure for adding a new post
-interface NewCommunityPostData {
-  userId: string;
-  authorEmail: string;
-  content: string;
-  createdAt: FieldValue; // Specifically FieldValue from serverTimestamp()
+interface NewCommunityPostData extends Omit<CommunityPost, 'id' | 'createdAt' | 'replyCount' | 'repostCount' | 'bookmarkCount'> {
+  createdAt: FieldValue;
+  replyCount: number;
+  repostCount: number;
+  bookmarkCount: number;
 }
 
 export async function createCommunityPost(userId: string, authorEmail: string, content: string): Promise<CommunityPost | null> {
@@ -274,11 +271,12 @@ export async function createCommunityPost(userId: string, authorEmail: string, c
       authorEmail,
       content: content.trim(),
       createdAt: serverTimestamp(),
+      replyCount: 0,
+      repostCount: 0,
+      bookmarkCount: 0,
     };
 
     const docRef = await addDoc(collection(db, 'communityPosts'), postToSave);
-    
-    // Fetch the just-created document to get the server-generated timestamp
     const newDocSnap = await getDoc(doc(db, 'communityPosts', docRef.id));
     if (!newDocSnap.exists()) {
         console.error("Failed to fetch newly created community post from Firestore:", docRef.id);
@@ -286,21 +284,12 @@ export async function createCommunityPost(userId: string, authorEmail: string, c
     }
 
     const savedData = newDocSnap.data() as StoredCommunityPost;
-
-    let createdAtISO = new Date().toISOString(); // Fallback timestamp
-    if (savedData.createdAt && typeof (savedData.createdAt as Timestamp).toDate === 'function') {
-        createdAtISO = (savedData.createdAt as Timestamp).toDate().toISOString();
-    } else {
-        console.warn("Community post createdAt field was not a valid Firestore Timestamp after fetch. Original data:", savedData.createdAt);
-        // Using a fallback current timestamp. Ideally, serverTimestamp should always resolve to a Timestamp.
-    }
+    const createdAtISO = (savedData.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString();
 
     console.log("Community post saved and fetched from Firestore with ID: ", newDocSnap.id);
     return {
         id: newDocSnap.id,
-        userId: savedData.userId,
-        authorEmail: savedData.authorEmail,
-        content: savedData.content,
+        ...savedData,
         createdAt: createdAtISO,
     };
 
@@ -314,29 +303,85 @@ export async function getCommunityPosts(): Promise<CommunityPost[]> {
   try {
     const q = query(collection(db, 'communityPosts'), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
-    const posts: CommunityPost[] = [];
-    querySnapshot.forEach((docSnap) => { 
+    const posts: CommunityPost[] = querySnapshot.docs.map((docSnap) => { 
       const data = docSnap.data() as StoredCommunityPost;
-      
-      let createdAtISO = new Date().toISOString(); // Fallback timestamp
-      if (data.createdAt && typeof (data.createdAt as Timestamp).toDate === 'function') {
-          createdAtISO = (data.createdAt as Timestamp).toDate().toISOString();
-      } else {
-          console.warn(`Community post (ID: ${docSnap.id}) fetched with invalid createdAt field. Original data:`, data.createdAt);
-      }
-
-      posts.push({
+      const createdAtISO = (data.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString();
+      return {
         id: docSnap.id,
-        userId: data.userId,
-        authorEmail: data.authorEmail,
-        content: data.content,
+        ...data,
         createdAt: createdAtISO, 
-      });
+      };
     });
     console.log(`Fetched ${posts.length} community posts from Firestore.`);
     return posts;
   } catch (error) {
     console.error("Error fetching community posts from Firestore: ", error);
     return [];
+  }
+}
+
+// --- Post Interactions ---
+export type InteractionType = 'repost' | 'bookmark';
+export async function interactWithPost(userId: string, postId: string, interactionType: InteractionType) {
+  const postRef = doc(db, 'communityPosts', postId);
+  const interactionCollectionName = interactionType === 'repost' ? 'reposts' : 'bookmarks';
+  const interactionRef = doc(db, 'communityPosts', postId, interactionCollectionName, userId);
+  const countField = interactionType === 'repost' ? 'repostCount' : 'bookmarkCount';
+
+  try {
+    let userHasInteracted = false;
+    const newCount = await runTransaction(db, async (transaction) => {
+      const interactionDoc = await transaction.get(interactionRef);
+      const postDoc = await transaction.get(postRef);
+
+      if (!postDoc.exists()) {
+        throw "Postingan tidak ditemukan.";
+      }
+
+      let currentCount = postDoc.data()[countField] || 0;
+      if (interactionDoc.exists()) {
+        // User is undoing the interaction
+        transaction.delete(interactionRef);
+        transaction.update(postRef, { [countField]: increment(-1) });
+        userHasInteracted = false;
+        return currentCount - 1;
+      } else {
+        // User is performing the interaction
+        transaction.set(interactionRef, { interactedAt: serverTimestamp() });
+        transaction.update(postRef, { [countField]: increment(1) });
+        userHasInteracted = true;
+        return currentCount + 1;
+      }
+    });
+    return { newCount, userHasInteracted };
+  } catch (error) {
+    console.error(`Error processing ${interactionType} interaction:`, error);
+    throw new Error(`Gagal memproses interaksi ${interactionType}.`);
+  }
+}
+
+export async function getUserPostInteractions(userId: string, postIds: string[]) {
+  const reposted = new Set<string>();
+  const bookmarked = new Set<string>();
+
+  if (!userId || postIds.length === 0) {
+    return { reposted: [], bookmarked: [] };
+  }
+
+  try {
+    // This is less efficient but works for smaller scales.
+    // For large scales, consider a different data model or server-side aggregation.
+    for (const postId of postIds) {
+      const repostRef = doc(db, 'communityPosts', postId, 'reposts', userId);
+      const bookmarkRef = doc(db, 'communityPosts', postId, 'bookmarks', userId);
+      const [repostSnap, bookmarkSnap] = await Promise.all([getDoc(repostRef), getDoc(bookmarkRef)]);
+      if (repostSnap.exists()) reposted.add(postId);
+      if (bookmarkSnap.exists()) bookmarked.add(postId);
+    }
+
+    return { reposted: Array.from(reposted), bookmarked: Array.from(bookmarked) };
+  } catch (error) {
+      console.error("Error fetching user post interactions:", error);
+      return { reposted: [], bookmarked: [] };
   }
 }

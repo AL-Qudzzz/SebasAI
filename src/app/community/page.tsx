@@ -8,11 +8,18 @@ import PageTitle from '@/components/common/PageTitle';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, MessageSquareText, Send } from 'lucide-react';
+import { Loader2, MessageSquareText, Send, MessageCircle, Repeat2, Bookmark, Share2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import type { CommunityPost } from '@/services/firestoreService'; // Import the interface
+import type { CommunityPost } from '@/services/firestoreService';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
+
+type InteractionType = 'repost' | 'bookmark';
+interface UserInteractions {
+  reposted: Set<string>;
+  bookmarked: Set<string>;
+}
 
 export default function CommunityPage() {
   const router = useRouter();
@@ -21,10 +28,11 @@ export default function CommunityPage() {
 
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
-  const [isLoadingPosts, setIsLoadingPosts] = useState(true); // Start true to load initial posts
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isSubmittingPost, setIsSubmittingPost] = useState(false);
+  const [userInteractions, setUserInteractions] = useState<UserInteractions>({ reposted: new Set(), bookmarked: new Set() });
 
-  const fetchPosts = useCallback(async () => {
+  const fetchPosts = useCallback(async (userId?: string | null) => {
     setIsLoadingPosts(true);
     try {
       const response = await fetch('/api/community/posts');
@@ -34,6 +42,23 @@ export default function CommunityPage() {
       }
       const data: CommunityPost[] = await response.json();
       setPosts(data);
+
+      if (userId && data.length > 0) {
+        const postIds = data.map(p => p.id);
+        const interactionsResponse = await fetch('/api/community/posts/interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, postIds }),
+        });
+        if (interactionsResponse.ok) {
+          const interactions: { reposted: string[], bookmarked: string[] } = await interactionsResponse.json();
+          setUserInteractions({
+            reposted: new Set(interactions.reposted),
+            bookmarked: new Set(interactions.bookmarked),
+          });
+        }
+      }
+
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Gagal memuat postingan.", variant: "destructive" });
     } finally {
@@ -45,7 +70,7 @@ export default function CommunityPage() {
     if (!loadingAuthState && !currentUser) {
       router.push('/auth');
     } else if (currentUser) {
-      fetchPosts();
+      fetchPosts(currentUser.uid);
     }
   }, [currentUser, loadingAuthState, router, fetchPosts]);
 
@@ -62,7 +87,7 @@ export default function CommunityPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: currentUser.uid,
-          authorEmail: currentUser.email || 'Anonim', // Ensure email is passed
+          authorEmail: currentUser.email || 'Anonim',
           content: newPostContent,
         }),
       });
@@ -70,8 +95,8 @@ export default function CommunityPage() {
         const errData = await response.json().catch(() => ({ error: 'Gagal membuat postingan.' }));
         throw new Error(errData.error);
       }
-      const newPost: CommunityPost = await response.json(); // API now returns the new post
-      setPosts(prevPosts => [newPost, ...prevPosts]); // Prepend the new post to the local state
+      const newPost: CommunityPost = await response.json();
+      setPosts(prevPosts => [newPost, ...prevPosts]);
       setNewPostContent('');
       toast({ title: "Sukses", description: "Postingan berhasil dibuat!" });
     } catch (error: any) {
@@ -80,7 +105,58 @@ export default function CommunityPage() {
       setIsSubmittingPost(false);
     }
   };
+  
+  const handleInteraction = async (postId: string, interactionType: InteractionType) => {
+    if (!currentUser) return;
 
+    try {
+        const response = await fetch(`/api/community/posts/interactions`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.uid, postId, interactionType }),
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({ error: 'Gagal berinteraksi dengan postingan.' }));
+            throw new Error(errData.error);
+        }
+
+        const { newCount, userHasInteracted } = await response.json();
+        
+        // Optimistically update UI
+        setPosts(posts.map(p => {
+            if (p.id === postId) {
+                const updatedPost = { ...p };
+                if (interactionType === 'repost') updatedPost.repostCount = newCount;
+                if (interactionType === 'bookmark') updatedPost.bookmarkCount = newCount;
+                return updatedPost;
+            }
+            return p;
+        }));
+
+        setUserInteractions(prev => {
+            const newInteractions = { ...prev };
+            const set = newInteractions[interactionType === 'repost' ? 'reposted' : 'bookmarked'];
+            if (userHasInteracted) {
+                set.add(postId);
+            } else {
+                set.delete(postId);
+            }
+            return newInteractions;
+        });
+
+    } catch (error: any) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleReply = (postId: string) => {
+    toast({ title: "Fitur Dalam Pengembangan", description: "Fitur balasan akan segera hadir!" });
+  };
+  
+  const handleShare = (postId: string) => {
+    toast({ title: "Fitur Dalam Pengembangan", description: "Fitur berbagi akan segera hadir!" });
+  };
 
   if (loadingAuthState) {
     return (
@@ -167,7 +243,35 @@ export default function CommunityPage() {
               <CardContent>
                 <p className="whitespace-pre-wrap text-foreground/90">{post.content}</p>
               </CardContent>
-              {/* Future: Add CardFooter for actions like likes, comments */}
+              <CardFooter className="flex items-center justify-between border-t pt-2">
+                 <div className="flex space-x-4 text-muted-foreground">
+                    <Button variant="ghost" size="sm" className="flex items-center space-x-2" onClick={() => handleReply(post.id)}>
+                        <MessageCircle className="w-4 h-4" />
+                        <span>{post.replyCount || 0}</span>
+                    </Button>
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className={cn("flex items-center space-x-2", { 'text-green-500': userInteractions.reposted.has(post.id) })}
+                        onClick={() => handleInteraction(post.id, 'repost')}
+                    >
+                        <Repeat2 className={cn("w-4 h-4", { 'fill-current': userInteractions.reposted.has(post.id) })} />
+                        <span>{post.repostCount || 0}</span>
+                    </Button>
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className={cn("flex items-center space-x-2", { 'text-yellow-500': userInteractions.bookmarked.has(post.id) })}
+                        onClick={() => handleInteraction(post.id, 'bookmark')}
+                    >
+                        <Bookmark className={cn("w-4 h-4", { 'fill-current': userInteractions.bookmarked.has(post.id) })} />
+                        <span>{post.bookmarkCount || 0}</span>
+                    </Button>
+                 </div>
+                 <Button variant="ghost" size="icon" onClick={() => handleShare(post.id)}>
+                    <Share2 className="w-4 h-4" />
+                 </Button>
+              </CardFooter>
             </Card>
           ))}
         </div>
