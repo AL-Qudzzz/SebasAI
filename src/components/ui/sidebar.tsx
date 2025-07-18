@@ -74,6 +74,21 @@ const SidebarProvider = React.forwardRef<
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
     const [_open, _setOpen] = React.useState(defaultOpen)
+
+    // On initial client mount, we read the cookie and set the state.
+    // This effect runs only once on the client.
+    React.useEffect(() => {
+      const cookieValue = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+        ?.split("=")[1];
+      
+      if (cookieValue !== undefined) {
+        _setOpen(cookieValue === 'true');
+      }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    
     const open = openProp ?? _open
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
@@ -322,25 +337,6 @@ const SidebarInset = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"main">
 >(({ className, ...props }, ref) => {
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-       <main
-        ref={ref}
-        className={cn(
-          "relative flex min-h-svh flex-1 flex-col bg-background",
-           className
-        )}
-        {...props}
-      />
-    )
-  }
-
   return (
     <main
       ref={ref}
