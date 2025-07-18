@@ -54,7 +54,7 @@ export default function ProfilePage() {
         title="Profil Saya"
         description="Kelola informasi akun Anda di sini."
       />
-      <Card className="w-full shadow-lg">
+      <Card className="w-full max-w-md mx-auto shadow-lg">
         <CardHeader className="items-center text-center">
           <Avatar className="w-24 h-24 mb-4 ring-2 ring-primary ring-offset-2 ring-offset-background">
             <AvatarImage src={`https://placehold.co/100x100.png?text=${currentUser.email?.[0]?.toUpperCase() ?? 'U'}`} alt={currentUser.email ?? 'User Avatar'} data-ai-hint="profile avatar" />
