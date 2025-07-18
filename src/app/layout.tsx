@@ -42,7 +42,7 @@ export default function RootLayout({
                 <SidebarInset className="bg-background flex flex-col flex-1">
                   <AppHeader />
                   <main className="flex-1 p-4 md:p-6 overflow-y-auto">
-                    <div className="container mx-auto max-w-screen-2xl h-full">
+                    <div className="h-full">
                     {children}
                     </div>
                   </main>
