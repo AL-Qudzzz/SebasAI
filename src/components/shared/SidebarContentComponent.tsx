@@ -45,7 +45,7 @@ export default function SidebarContentComponent() {
       <SidebarHeader className="p-4">
         <div className="flex items-center space-x-2">
           <AppLogo />
-          <span className="text-2xl font-headline font-semibold text-sidebar-foreground">Sebas</span>
+          <span className="text-2xl font-headline font-semibold text-sidebar-foreground">SebasAI</span>
         </div>
       </SidebarHeader>
       <SidebarContent className="p-2">

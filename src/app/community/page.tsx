@@ -274,7 +274,7 @@ export default function CommunityPage() {
     <div className="space-y-8 flex flex-col items-center w-full">
       <div className="w-full">
         <PageTitle
-          title="Komunitas Sebas"
+          title="Komunitas SebasAI"
           description="Terhubung, berbagi, dan dapatkan dukungan dari pengguna lain."
         />
       </div>

@@ -70,7 +70,7 @@ export default function ProfilePage() {
             <AvatarFallback>{currentUser.email?.[0]?.toUpperCase() ?? 'U'}</AvatarFallback>
           </Avatar>
           <CardTitle className="text-2xl">{currentUser.email}</CardTitle>
-          <CardDescription>Pengguna Terdaftar Sebas</CardDescription>
+          <CardDescription>Pengguna Terdaftar SebasAI</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center space-y-4">
           {/* Add more profile information here in the future */}

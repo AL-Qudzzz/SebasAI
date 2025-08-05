@@ -10,7 +10,7 @@ import { AuthProvider } from '@/contexts/auth-context';
 
 
 export const metadata: Metadata = {
-  title: 'Sebas - Your Personal AI Companion',
+  title: 'SebasAI - Your Personal AI Companion',
   description: 'AI-powered chat, journaling, and wellness support.',
 };
 

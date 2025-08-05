@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import PageTitle from '@/components/common/PageTitle';
@@ -39,7 +40,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <PageTitle
-        title="Welcome to Sebas"
+        title="Welcome to SebasAI"
         description="Your personal AI companion for mental wellness and self-reflection. Explore the features below to get started."
       />
       
