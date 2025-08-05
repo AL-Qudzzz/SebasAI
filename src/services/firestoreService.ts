@@ -263,6 +263,7 @@ interface StoredCommunityPost {
   repostCount: number;
   bookmarkCount: number;
 }
+
 export async function createCommunityPost(userId: string, authorEmail: string, content: string): Promise<CommunityPost | null> {
   if (!userId || !authorEmail || !content.trim()) {
     console.error("User ID, author email, and content are required for createCommunityPost.");
@@ -294,10 +295,64 @@ export async function createCommunityPost(userId: string, authorEmail: string, c
   }
 }
 
+// Dummy data for seeding
+const dummyPostsToSeed: Omit<StoredCommunityPost, 'createdAt'>[] = [
+  {
+    userId: 'seeder_user_1',
+    authorEmail: 'susan.testing@example.com',
+    content: 'Ini adalah postingan pertama dari database! Fitur reply, repost, dan bookmark seharusnya sudah berfungsi sekarang.',
+    replyCount: 0,
+    repostCount: 5,
+    bookmarkCount: 10,
+  },
+  {
+    userId: 'seeder_user_2',
+    authorEmail: 'brian.dev@example.com',
+    content: 'Postingan kedua untuk mengisi ruang dan memeriksa fungsionalitas scroll. Sejauh ini, semuanya tampak hebat. Data ini berasal dari Firestore.',
+    replyCount: 0,
+    repostCount: 1,
+    bookmarkCount: 3,
+  },
+];
+
+async function seedDatabase() {
+  console.log('Seeding database with dummy posts...');
+  const postsCollection = collection(db, 'communityPosts');
+  for (const post of dummyPostsToSeed) {
+    try {
+      await addDoc(postsCollection, {
+        ...post,
+        createdAt: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24).toISOString(), // Random time in last 24h
+      });
+    } catch (error) {
+      console.error('Error seeding post:', error);
+    }
+  }
+  console.log('Database seeding complete.');
+}
+
+
 export async function getCommunityPosts(): Promise<CommunityPost[]> {
   try {
-    const q = query(collection(db, 'communityPosts'), orderBy('createdAt', 'desc'));
+    const postsCollection = collection(db, 'communityPosts');
+    const q = query(postsCollection, orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      console.log('No posts found, seeding database...');
+      await seedDatabase();
+      // Re-fetch after seeding
+      const newSnapshot = await getDocs(q);
+      const posts: CommunityPost[] = newSnapshot.docs.map((docSnap) => {
+        const data = docSnap.data() as StoredCommunityPost;
+        return {
+          id: docSnap.id,
+          ...data,
+        };
+      });
+      return posts;
+    }
+
     const posts: CommunityPost[] = querySnapshot.docs.map((docSnap) => { 
       const data = docSnap.data() as StoredCommunityPost;
       return {
@@ -305,7 +360,6 @@ export async function getCommunityPosts(): Promise<CommunityPost[]> {
         ...data,
       };
     });
-    console.log(`Fetched ${posts.length} community posts from Firestore.`);
     return posts;
   } catch (error) {
     console.error("Error fetching community posts from Firestore: ", error);

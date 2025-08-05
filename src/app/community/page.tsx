@@ -18,37 +18,6 @@ interface UserInteractions {
   bookmarked: Set<string>;
 }
 
-// --- DUMMY DATA FOR DEBUGGING ---
-const dummyPosts: CommunityPost[] = [
-  {
-    id: 'dummy1',
-    userId: 'user123',
-    authorEmail: 'susan.testing@example.com',
-    content: 'Ini adalah postingan dummy untuk pengujian. Tampilannya bagus, dan semua tombol interaksi (balas, repost, bookmark) seharusnya berfungsi di sisi UI.',
-    createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 minutes ago
-    replyCount: 2,
-    repostCount: 5,
-    bookmarkCount: 10,
-    replies: [
-        { id: 'reply1', userId: 'user456', authorEmail: 'john.doe@example.com', content: 'Komentar pertama! Terlihat bagus.', createdAt: new Date().toISOString() },
-        { id: 'reply2', userId: 'user789', authorEmail: 'jane.doe@example.com', content: 'Setuju, tata letaknya berfungsi dengan baik.', createdAt: new Date().toISOString() }
-    ]
-  },
-  {
-    id: 'dummy2',
-    userId: 'user456',
-    authorEmail: 'brian.dev@example.com',
-    content: 'Postingan kedua untuk mengisi ruang dan memeriksa fungsionalitas scroll. Sejauh ini, semuanya tampak hebat. Fitur balasan juga dapat diuji di sini.',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // 1 hour ago
-    replyCount: 0,
-    repostCount: 1,
-    bookmarkCount: 3,
-    replies: []
-  },
-];
-// --- END DUMMY DATA ---
-
-
 // --- Sub-components for better organization ---
 
 function CreatePostForm({
@@ -64,10 +33,6 @@ function CreatePostForm({
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Temporarily disable posting to focus on displaying data
-    toast({ title: "Fitur Dinonaktifkan Sementara", description: "Pembuatan postingan dinonaktifkan untuk debugging. Data yang ditampilkan adalah data dummy." });
-    return;
-    /*
     if (!currentUser) {
       toast({ title: "Otentikasi Gagal", description: "Anda harus login untuk membuat postingan.", variant: "destructive" });
       return;
@@ -100,7 +65,6 @@ function CreatePostForm({
     } finally {
       setIsSubmittingPost(false);
     }
-    */
   };
 
   return (
@@ -184,16 +148,37 @@ export default function CommunityPage() {
 
   const fetchPosts = useCallback(async (userId?: string | null) => {
     setIsLoadingPosts(true);
-    // Use dummy data instead of fetching from API
-    setTimeout(() => {
-        setPosts(dummyPosts);
-        setUserInteractions({
-            reposted: new Set(['dummy2']), // Let's say user has reposted the second dummy post
-            bookmarked: new Set(['dummy1']), // and bookmarked the first one
-        });
+    try {
+        const response = await fetch('/api/community/posts');
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({error: 'Gagal mengambil postingan'}));
+            throw new Error(errData.error);
+        }
+        const fetchedPosts: CommunityPost[] = await response.json();
+        setPosts(fetchedPosts);
+
+        if (userId && fetchedPosts.length > 0) {
+            const postIds = fetchedPosts.map(p => p.id);
+            const interactionsResponse = await fetch('/api/community/posts/interactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, postIds }),
+            });
+            if (interactionsResponse.ok) {
+                const interactions: { reposted: string[], bookmarked: string[] } = await interactionsResponse.json();
+                setUserInteractions({
+                    reposted: new Set(interactions.reposted),
+                    bookmarked: new Set(interactions.bookmarked),
+                });
+            }
+        }
+    } catch (error: any) {
+        toast({ title: "Gagal Mengambil Postingan", description: error.message, variant: "destructive" });
+    } finally {
         setIsLoadingPosts(false);
-    }, 500); // Simulate network delay
-  }, []);
+    }
+  }, [toast]);
+
 
   useEffect(() => {
     if (!loadingAuthState && !currentUser) {
@@ -206,21 +191,21 @@ export default function CommunityPage() {
   const handleInteraction = async (postId: string, interactionType: 'repost' | 'bookmark') => {
     if (!currentUser) return;
 
-    // Optimistic UI Update for dummy data
+    // Optimistic UI Update
     setUserInteractions(prev => {
-        const newSet = new Set(prev[interactionType === 'repost' ? 'reposted' : 'bookmarked']);
+        const newSet = new Set(prev[interactionType]);
         if (newSet.has(postId)) {
             newSet.delete(postId);
         } else {
             newSet.add(postId);
         }
-        return { ...prev, [interactionType === 'repost' ? 'reposted' : 'bookmarked']: newSet };
+        return { ...prev, [interactionType]: newSet };
     });
 
-    setPosts(prevPosts => prevPosts.map(p => {
+     setPosts(prevPosts => prevPosts.map(p => {
         if (p.id === postId) {
             const currentCount = p[`${interactionType}Count`] || 0;
-            const hasInteracted = userInteractions[interactionType === 'repost' ? 'reposted' : 'bookmarked'].has(postId);
+            const hasInteracted = userInteractions[interactionType].has(postId);
             return {
                 ...p,
                 [`${interactionType}Count`]: hasInteracted ? currentCount - 1 : currentCount + 1,
@@ -229,7 +214,21 @@ export default function CommunityPage() {
         return p;
     }));
 
-    toast({ title: "Interaksi Dummy", description: `Anda ${userInteractions[interactionType === 'repost' ? 'reposted' : 'bookmarked'].has(postId) ? 'menghapus' : 'menambahkan'} ${interactionType} pada postingan dummy.` });
+    try {
+        const response = await fetch('/api/community/posts/interactions', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.uid, postId, interactionType }),
+        });
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({error: "Gagal melakukan interaksi."}));
+            throw new Error(errData.error);
+        }
+    } catch (error: any) {
+        toast({ title: "Gagal Berinteraksi", description: error.message, variant: "destructive" });
+        // Revert UI on error
+        fetchPosts(currentUser.uid);
+    }
   };
 
   const handlePostCreated = (newPost: CommunityPost) => {
@@ -239,15 +238,14 @@ export default function CommunityPage() {
   const handleReplyCreated = (postId: string, newReply: Reply) => {
     setPosts(prevPosts => prevPosts.map(post => {
         if (post.id === postId) {
+            // Since replies are fetched within the component, we just need to update the count
             return {
                 ...post,
                 replyCount: post.replyCount + 1,
-                replies: [...(post.replies || []), newReply],
             };
         }
         return post;
     }));
-    toast({ title: "Balasan Dummy", description: "Balasan Anda ditambahkan ke postingan dummy." });
   };
   
   if (loadingAuthState) {
@@ -276,7 +274,9 @@ export default function CommunityPage() {
         />
       </div>
 
-      <CreatePostForm currentUser={currentUser} onPostCreated={handlePostCreated} />
+      <div className="w-full max-w-4xl">
+        <CreatePostForm currentUser={currentUser} onPostCreated={handlePostCreated} />
+      </div>
 
       {isLoadingPosts ? (
         <div className="flex justify-center items-center py-10">
@@ -284,13 +284,15 @@ export default function CommunityPage() {
           <p className="ml-2 text-muted-foreground">Memuat postingan...</p>
         </div>
       ) : (
-        <CommunityFeed
-          posts={posts}
-          currentUser={currentUser}
-          userInteractions={userInteractions}
-          onInteraction={handleInteraction}
-          onReplyCreated={handleReplyCreated}
-        />
+         <div className="w-full max-w-4xl">
+            <CommunityFeed
+              posts={posts}
+              currentUser={currentUser}
+              userInteractions={userInteractions}
+              onInteraction={handleInteraction}
+              onReplyCreated={handleReplyCreated}
+            />
+        </div>
       )}
     </div>
   );
