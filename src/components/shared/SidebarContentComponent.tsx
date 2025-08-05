@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, MessageSquare, BookText, Smile, Lightbulb, PenSquare, Sparkles, PieChart, FileText, Target, Users, User as UserIcon } from 'lucide-react'; // Added Users, UserIcon
+import { Home, MessageSquare, BookText, Smile, Lightbulb, PenSquare, Sparkles, PieChart, FileText, Target, Users, User as UserIcon } from 'lucide-react';
 import { AppLogo } from '@/components/icons/AppLogo';
 import { cn } from '@/lib/utils';
 import {
@@ -12,6 +12,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  useSidebar, 
 } from '@/components/ui/sidebar';
 
 const navItems = [
@@ -32,6 +33,13 @@ const navItems = [
 
 export default function SidebarContentComponent() {
   const pathname = usePathname();
+  const { setOpenMobile, isMobile } = useSidebar();
+
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
     <>
@@ -55,7 +63,7 @@ export default function SidebarContentComponent() {
                     // Minimal styling here as ui/sidebar handles active/hover states.
                   )}
                 >
-                  <Link href={item.href} className="flex items-center gap-3">
+                  <Link href={item.href} className="flex items-center gap-3" onClick={handleLinkClick}>
                     <item.icon className="w-5 h-5 shrink-0" />
                     <span className="text-sm">{item.label}</span>
                   </Link>
