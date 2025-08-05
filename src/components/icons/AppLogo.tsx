@@ -1,27 +1,14 @@
-import type { SVGProps } from 'react';
+import Image from 'next/image';
 
-export function AppLogo(props: SVGProps<SVGSVGElement>) {
+export function AppLogo() {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 100 100"
-      width="40"
-      height="40"
-      aria-label="Sebas Logo"
-      {...props}
-    >
-      <rect width="100" height="100" rx="20" fill="hsl(var(--primary))" />
-      <text
-        x="50%"
-        y="50%"
-        dominantBaseline="middle"
-        textAnchor="middle"
-        fontSize="40"
-        fontFamily="Belleza, sans-serif"
-        fill="hsl(var(--primary-foreground))"
-      >
-        SE
-      </text>
-    </svg>
+    <Image
+      src="https://i.imgur.com/ONPGKul.jpeg"
+      alt="CurhatYuk Logo"
+      width={40}
+      height={40}
+      className="rounded-lg"
+      priority
+    />
   );
 }
