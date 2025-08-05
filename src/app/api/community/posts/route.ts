@@ -1,7 +1,7 @@
 
 // src/app/api/community/posts/route.ts
 import { NextResponse } from 'next/server';
-import { createCommunityPost, getCommunityPosts, type CommunityPost } from '@/services/firestoreService';
+import { createCommunityPost, type CommunityPost } from '@/services/firestoreService';
 
 export async function GET(request: Request) {
   try {
@@ -18,15 +18,17 @@ export async function POST(request: Request) {
     const body = await request.json() as { userId?: string, authorEmail?: string, content?: string };
     const { userId, authorEmail, content } = body;
 
-    if (!userId || !authorEmail || !content || content.trim() === '') {
-      return NextResponse.json({ error: "User ID, email penulis, dan konten tidak boleh kosong." }, { status: 400 });
+    // Validasi yang lebih ketat di sisi server
+    if (!userId || typeof userId !== 'string' || !authorEmail || typeof authorEmail !== 'string' || !content || typeof content !== 'string' || content.trim() === '') {
+      console.error("Invalid data received for new post:", body);
+      return NextResponse.json({ error: "Data tidak valid atau tidak lengkap (memerlukan userId, authorEmail, dan content)." }, { status: 400 });
     }
 
     const newPost: CommunityPost | null = await createCommunityPost(userId, authorEmail, content);
 
     if (!newPost) {
-      // The detailed error is now logged in the service, this is a user-facing message.
-      return NextResponse.json({ error: "Gagal menyimpan postingan ke database. Periksa log server atau aturan keamanan Firestore Anda." }, { status: 500 });
+      // Kesalahan spesifik dicatat di dalam createCommunityPost, ini adalah pesan untuk pengguna.
+      return NextResponse.json({ error: "Gagal menyimpan postingan ke database. Silakan periksa log server untuk detail lebih lanjut." }, { status: 500 });
     }
     
     return NextResponse.json(newPost, { status: 201 });
@@ -34,10 +36,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error in POST /api/community/posts:", error);
     if (error instanceof SyntaxError) {
-        // This catches errors from `request.json()` if the body is not valid JSON
+        // Ini menangkap error dari `request.json()` jika body bukan JSON yang valid
         return NextResponse.json({ error: "Format request JSON tidak valid." }, { status: 400 });
     }
-    // Generic error for any other unexpected issues
+    // Error umum untuk masalah tak terduga lainnya
     return NextResponse.json({ error: "Terjadi kesalahan internal saat memproses postingan Anda." }, { status: 500 });
   }
 }
