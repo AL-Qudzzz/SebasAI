@@ -2,7 +2,7 @@
 // src/ai/flows/chatWithAI.ts
 'use server';
 /**
- * @fileOverview A flow to handle AI chat, providing empathetic responses and sentiment analysis.
+ * @fileOverview A flow to handle AI chat, providing empathetic responses and sentiment analysis in a single call.
  */
 
 import { ai } from '@/ai/genkit';
@@ -30,17 +30,19 @@ export async function chatWithAI(input: ChatWithAIInput): Promise<ChatWithAIOutp
 const empatheticChatPrompt = ai.definePrompt({
   name: 'empatheticChatPrompt',
   input: { schema: ChatWithAIInputSchema },
-  output: { schema: z.object({ response: z.string() }) },
+  output: { schema: ChatWithAIOutputSchema },
   prompt: `You are Sebas, an empathetic AI companion. Your goal is to support users in expressing themselves and reflecting on their feelings.
-Respond to the user's message in a warm, understanding, and supportive way. Ask open-ended, reflective questions to encourage deeper thought.
-Avoid giving direct advice or solutions, especially medical advice. Focus on validating their feelings and guiding them through their thoughts.
+1.  Analyze the user's message to determine its sentiment (positive, negative, or neutral) and a sentiment score from -1.0 to 1.0.
+2.  Respond to the user's message in a warm, understanding, and supportive way. Ask open-ended, reflective questions to encourage deeper thought.
+3.  Avoid giving direct advice or solutions, especially medical advice. Focus on validating their feelings and guiding them through their thoughts.
+
+Return your answer in a valid JSON object matching the output schema.
+
 {{#if chatHistory}}
 Conversation History:
 {{{chatHistory}}}
 {{/if}}
 User's current message: "{{userInput}}"
-
-Your empathetic response:
 `,
   config: {
     safetySettings: [
@@ -60,28 +62,20 @@ const chatWithAIFlow = ai.defineFlow(
   },
   async (input: ChatWithAIInput) => {
     try {
-      // Get empathetic response and analyze sentiment in parallel
-      const [chatResponse, sentimentAnalysis] = await Promise.all([
-        empatheticChatPrompt(input),
-        analyzeSentiment({ text: input.userInput })
-      ]);
-
-      const aiResponseMessage = chatResponse.output?.response;
+      // Single call to get both empathetic response and sentiment analysis
+      const chatResponse = await empatheticChatPrompt(input);
       
-      if (!aiResponseMessage) {
-        console.error('AI did not return a valid chat response.', { output: chatResponse.output });
-        throw new Error("Gagal mendapatkan respons dari AI.");
-      }
-
-      if (!sentimentAnalysis) {
-          console.error('AI did not return a valid sentiment analysis.');
-          throw new Error("Gagal menganalisis sentimen.");
+      const aiOutput = chatResponse.output;
+      
+      if (!aiOutput || !aiOutput.response || !aiOutput.sentiment || typeof aiOutput.sentimentScore !== 'number') {
+        console.error('AI did not return a valid response or sentiment.', { output: aiOutput });
+        throw new Error("Gagal mendapatkan respons atau analisis sentimen dari AI.");
       }
 
       return {
-        response: aiResponseMessage,
-        sentiment: sentimentAnalysis.sentiment,
-        sentimentScore: sentimentAnalysis.score,
+        response: aiOutput.response,
+        sentiment: aiOutput.sentiment,
+        sentimentScore: aiOutput.sentimentScore,
       };
 
     } catch (error) {

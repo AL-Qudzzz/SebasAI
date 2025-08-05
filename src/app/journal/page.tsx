@@ -100,9 +100,10 @@ export default function JournalPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to form
   };
 
-  const fetchNewPrompt = async () => {
+  const fetchNewPrompt = useCallback(async () => {
     if (!currentUser) {
         toast({ title: "Info", description: "Login untuk mendapatkan prompt yang dipersonalisasi.", variant: "default" });
+        return;
     }
     setIsLoadingPrompt(true);
     setAiPrompt({}); // Clear previous prompt/error
@@ -111,14 +112,15 @@ export default function JournalPage() {
     const promptState = await getNewJournalPrompt(latestMood, recentHistory);
     setAiPrompt(promptState);
     setIsLoadingPrompt(false);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, entries, moods]); // Dependencies are correct
 
   useEffect(() => {
     if (currentUser) {
       fetchNewPrompt();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entries, moods, currentUser]);
+  }, [currentUser]); // Fetch only once on user login, not on every data change
 
   return (
     <div className="space-y-8">

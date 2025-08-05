@@ -191,10 +191,15 @@ export default function CommunityPage() {
   const handleInteraction = async (postId: string, interactionType: 'repost' | 'bookmark') => {
     if (!currentUser) return;
 
+    const originalInteractions = { ...userInteractions };
+    const originalPosts = [...posts];
+
     // Optimistic UI Update
+    const hasInteracted = userInteractions[interactionType].has(postId);
+    
     setUserInteractions(prev => {
         const newSet = new Set(prev[interactionType]);
-        if (newSet.has(postId)) {
+        if (hasInteracted) {
             newSet.delete(postId);
         } else {
             newSet.add(postId);
@@ -205,7 +210,6 @@ export default function CommunityPage() {
      setPosts(prevPosts => prevPosts.map(p => {
         if (p.id === postId) {
             const currentCount = p[`${interactionType}Count`] || 0;
-            const hasInteracted = userInteractions[interactionType].has(postId);
             return {
                 ...p,
                 [`${interactionType}Count`]: hasInteracted ? currentCount - 1 : currentCount + 1,
@@ -226,8 +230,9 @@ export default function CommunityPage() {
         }
     } catch (error: any) {
         toast({ title: "Gagal Berinteraksi", description: error.message, variant: "destructive" });
-        // Revert UI on error
-        fetchPosts(currentUser.uid);
+        // Revert UI on error without full refetch
+        setUserInteractions(originalInteractions);
+        setPosts(originalPosts);
     }
   };
 
