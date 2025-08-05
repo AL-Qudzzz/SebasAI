@@ -11,7 +11,7 @@
  *   - GenerateJournalPromptOutput: The output type for the flow.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, callAIWithRetry} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateJournalPromptInputSchema = z.object({
@@ -60,7 +60,7 @@ const generateJournalPromptFlow = ai.defineFlow(
   },
   async input => {
     try {
-      const response = await prompt(input);
+      const response = await callAIWithRetry(prompt, input);
       const output = response.output;
 
       if (output && typeof output.prompt === 'string' && output.prompt.trim() !== '') {

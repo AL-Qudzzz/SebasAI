@@ -5,7 +5,7 @@
  * @fileOverview A flow to handle AI chat, providing empathetic responses and sentiment analysis in a single call.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, callAIWithRetry } from '@/ai/genkit';
 import { z } from 'genkit';
 import { analyzeSentiment, type SentimentInput, type SentimentOutput } from './summarize-sentiment';
 
@@ -63,7 +63,7 @@ const chatWithAIFlow = ai.defineFlow(
   async (input: ChatWithAIInput) => {
     try {
       // Single call to get both empathetic response and sentiment analysis
-      const chatResponse = await empatheticChatPrompt(input);
+      const chatResponse = await callAIWithRetry(empatheticChatPrompt, input);
       
       const aiOutput = chatResponse.output;
       

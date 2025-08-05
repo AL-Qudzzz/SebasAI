@@ -9,7 +9,7 @@
  * - PersonalizeWellnessContentOutput - The return type for the personalizeWellnessContent function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, callAIWithRetry} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const PersonalizeWellnessContentInputSchema = z.object({
@@ -66,7 +66,7 @@ const personalizeWellnessContentFlow = ai.defineFlow(
   },
   async input => {
     try {
-      const {output} = await prompt(input);
+      const {output} = await callAIWithRetry(prompt, input);
       if (output && typeof output.suggestedContent === 'string' && output.suggestedContent.trim() !== '') {
         return output;
       }

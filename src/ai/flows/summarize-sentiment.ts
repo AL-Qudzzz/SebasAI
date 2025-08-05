@@ -1,3 +1,4 @@
+
 // Summarize sentiment flow implementation
 'use server';
 /**
@@ -10,7 +11,7 @@
  * - SentimentOutput - The output type for the analyzeSentiment function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, callAIWithRetry} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const SentimentInputSchema = z.object({
@@ -55,7 +56,7 @@ const analyzeSentimentFlow = ai.defineFlow(
   },
   async input => {
     try {
-      const {output} = await prompt(input);
+      const {output} = await callAIWithRetry(prompt, input);
       if (!output || typeof output.sentiment !== 'string' || typeof output.score !== 'number') {
         console.error('Sentiment analysis prompt did not return a valid output for input:', input.text);
         throw new Error("AI returned an invalid sentiment analysis response.");
