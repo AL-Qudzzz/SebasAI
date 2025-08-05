@@ -291,7 +291,11 @@ export async function createCommunityPost(userId: string, authorEmail: string, c
       bookmarkCount: 0,
     };
   } catch (error: any) {
-    console.error("Error in createCommunityPost:", error);
+    console.error("Error in createCommunityPost while adding document to Firestore:", error);
+    // Log the actual Firestore error
+    if (error.code) {
+      console.error(`Firestore error code: ${error.code}`);
+    }
     return null;
   }
 }
@@ -437,5 +441,3 @@ export async function getReplies(postId: string): Promise<Reply[]> {
         return [];
     }
 }
-
-    

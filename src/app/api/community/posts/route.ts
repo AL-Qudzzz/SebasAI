@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     const newPost: CommunityPost | null = await createCommunityPost(userId, authorEmail, content);
 
     if (!newPost) {
+      // The detailed error is now logged in the service, this is a user-facing message.
       return NextResponse.json({ error: "Gagal menyimpan postingan ke database. Periksa aturan keamanan Firestore atau konfigurasi Firebase Anda." }, { status: 500 });
     }
     
@@ -33,8 +34,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error in POST /api/community/posts:", error);
     if (error instanceof SyntaxError) {
+        // This catches errors from `request.json()` if the body is not valid JSON
         return NextResponse.json({ error: "Format request JSON tidak valid." }, { status: 400 });
     }
+    // Generic error for any other unexpected issues
     return NextResponse.json({ error: "Terjadi kesalahan internal saat memproses postingan Anda." }, { status: 500 });
   }
 }
