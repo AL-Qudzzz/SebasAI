@@ -1,7 +1,7 @@
 
 // src/app/api/community/posts/route.ts
 import { NextResponse } from 'next/server';
-import { createCommunityPost, type CommunityPost } from '@/services/firestoreService';
+import { createCommunityPost, getCommunityPosts, type CommunityPost } from '@/services/firestoreService';
 
 export async function GET(request: Request) {
   try {
