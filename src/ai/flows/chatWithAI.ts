@@ -59,34 +59,35 @@ const chatWithAIFlow = ai.defineFlow(
     outputSchema: ChatWithAIOutputSchema,
   },
   async (input: ChatWithAIInput) => {
-    let aiResponseMessage = "I'm not sure how to respond to that right now, but I'm here to listen.";
-    let sentimentAnalysis: SentimentOutput = { sentiment: 'neutral', score: 0 };
-
     try {
-      // Get empathetic response
-      const chatResponse = await empatheticChatPrompt(input);
-      if (chatResponse.output?.response) {
-        aiResponseMessage = chatResponse.output.response;
+      // Get empathetic response and analyze sentiment in parallel
+      const [chatResponse, sentimentAnalysis] = await Promise.all([
+        empatheticChatPrompt(input),
+        analyzeSentiment({ text: input.userInput })
+      ]);
+
+      const aiResponseMessage = chatResponse.output?.response;
+      
+      if (!aiResponseMessage) {
+        console.error('AI did not return a valid chat response.', { output: chatResponse.output });
+        throw new Error("Gagal mendapatkan respons dari AI.");
       }
-    } catch (error) {
-      console.error('Error getting empathetic response from AI:', error);
-      // aiResponseMessage already has a fallback
-    }
 
-    try {
-      // Analyze sentiment of user's input
-      const sentimentInput: SentimentInput = { text: input.userInput };
-      sentimentAnalysis = await analyzeSentiment(sentimentInput);
-    } catch (error) {
-      console.error('Error analyzing sentiment:', error);
-      // sentimentAnalysis already has fallback values
-    }
+      if (!sentimentAnalysis) {
+          console.error('AI did not return a valid sentiment analysis.');
+          throw new Error("Gagal menganalisis sentimen.");
+      }
 
-    return {
-      response: aiResponseMessage,
-      sentiment: sentimentAnalysis.sentiment,
-      sentimentScore: sentimentAnalysis.score,
-    };
+      return {
+        response: aiResponseMessage,
+        sentiment: sentimentAnalysis.sentiment,
+        sentimentScore: sentimentAnalysis.score,
+      };
+
+    } catch (error) {
+      console.error('Error in chatWithAIFlow:', error);
+      // Re-throw the error to be caught by the calling action
+      throw new Error("Terjadi kesalahan saat memproses permintaan chat Anda.");
+    }
   }
 );
-
