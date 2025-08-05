@@ -68,7 +68,7 @@ function CreatePostForm({
   };
 
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg w-full">
       <CardHeader>
         <CardTitle className="font-headline text-xl text-primary">Buat Postingan Baru</CardTitle>
       </CardHeader>
@@ -107,7 +107,7 @@ function CommunityFeed({
 }) {
     if (posts.length === 0) {
         return (
-            <Card>
+            <Card className="w-full">
                 <CardContent className="pt-6 text-center">
                     <MessageSquareText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                     <p className="text-lg text-muted-foreground">Belum ada postingan di komunitas.</p>
@@ -118,7 +118,7 @@ function CommunityFeed({
     }
     
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 w-full">
             <h2 className="text-2xl font-headline text-primary">Postingan Komunitas</h2>
             {posts.map((post) => (
                 <PostCard
@@ -267,11 +267,13 @@ export default function CommunityPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <PageTitle
-        title="Komunitas Sebas"
-        description="Terhubung, berbagi, dan dapatkan dukungan dari pengguna lain."
-      />
+    <div className="space-y-8 flex flex-col items-center w-full">
+      <div className="w-full">
+        <PageTitle
+          title="Komunitas Sebas"
+          description="Terhubung, berbagi, dan dapatkan dukungan dari pengguna lain."
+        />
+      </div>
 
       <CreatePostForm currentUser={currentUser} onPostCreated={handlePostCreated} />
 
@@ -292,3 +294,5 @@ export default function CommunityPage() {
     </div>
   );
 }
+
+    
