@@ -15,7 +15,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { userId, authorEmail, content } = await request.json() as { userId: string, authorEmail: string, content: string };
+    const body = await request.json() as { userId?: string, authorEmail?: string, content?: string };
+    const { userId, authorEmail, content } = body;
 
     if (!userId || !authorEmail || !content || content.trim() === '') {
       return NextResponse.json({ error: "User ID, email penulis, dan konten tidak boleh kosong." }, { status: 400 });
@@ -32,8 +33,8 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error in POST /api/community/posts:", error);
     if (error instanceof SyntaxError) {
-        return NextResponse.json({ error: "Format request tidak valid." }, { status: 400 });
+        return NextResponse.json({ error: "Format request JSON tidak valid." }, { status: 400 });
     }
-    return NextResponse.json({ error: "Terjadi kesalahan internal saat memproses permintaan Anda." }, { status: 500 });
+    return NextResponse.json({ error: "Terjadi kesalahan internal saat memproses postingan Anda." }, { status: 500 });
   }
 }
