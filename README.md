@@ -83,10 +83,6 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 - [Muhammad Thoriq Nabasa] - Database Editor & Backend Developer
 - [Rakhadimas Naufal Ahyan] - Backend & Tester
 
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -103,3 +99,4 @@ For support, email [faiqul84@gmail.com] or open an issue in the repository.
 
 - Thanks to all contributors who have helped shape this project
 - Special thanks to the open-source community for their invaluable tools and libraries
+
