@@ -4,10 +4,10 @@ export function AppLogo() {
   return (
     <Image
       src="https://i.imgur.com/ONPGKul.jpeg"
-      alt="CurhatYuk Logo"
+      alt="SebasAI Logo"
       width={40}
       height={40}
-      className="rounded-lg"
+      className="rounded-full"
       priority
     />
   );

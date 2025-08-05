@@ -25,7 +25,6 @@ const navItems = [
   { href: '/daily-quote', label: 'Kutipan Harian', icon: PenSquare },
   { href: '/wellness-tip', label: 'Tips Kesejahteraan', icon: Sparkles },
   { href: '/mood-poll', label: 'Jajak Pendapat Suasana Hati', icon: PieChart },
-  { href: '/notes', label: 'Catatan Singkat', icon: FileText },
   { href: '/community', label: 'Komunitas', icon: Users },
   { href: '/profile', label: 'Profil Saya', icon: UserIcon },
   // { href: '/settings', label: 'Settings', icon: Settings }, // Future placeholder
@@ -46,7 +45,7 @@ export default function SidebarContentComponent() {
       <SidebarHeader className="p-4">
         <div className="flex items-center space-x-2">
           <AppLogo />
-          <span className="text-2xl font-headline font-semibold text-sidebar-foreground">CurhatYuk</span>
+          <span className="text-2xl font-headline font-semibold text-sidebar-foreground">Sebas</span>
         </div>
       </SidebarHeader>
       <SidebarContent className="p-2">
