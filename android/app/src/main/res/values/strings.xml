@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SebasAI</string>
+    <string name="title_activity_main">SebasAI</string>
+    <string name="package_name">com.sebasai.app</string>
+    <string name="custom_url_scheme">com.sebasai.app</string>
+</resources>
