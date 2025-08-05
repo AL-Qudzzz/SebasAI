@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
     if (!newPost) {
       // The detailed error is now logged in the service, this is a user-facing message.
-      return NextResponse.json({ error: "Gagal menyimpan postingan ke database. Periksa aturan keamanan Firestore atau konfigurasi Firebase Anda." }, { status: 500 });
+      return NextResponse.json({ error: "Gagal menyimpan postingan ke database. Periksa log server atau aturan keamanan Firestore Anda." }, { status: 500 });
     }
     
     return NextResponse.json(newPost, { status: 201 });

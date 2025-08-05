@@ -37,7 +37,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         const newReply = await createReply(postId, userId, authorEmail, content);
 
         if (!newReply) {
-            return NextResponse.json({ error: "Gagal menyimpan balasan. Periksa aturan keamanan Firestore Anda." }, { status: 500 });
+            return NextResponse.json({ error: "Gagal menyimpan balasan. Periksa log server atau aturan keamanan Firestore Anda." }, { status: 500 });
         }
 
         return NextResponse.json(newReply, { status: 201 });

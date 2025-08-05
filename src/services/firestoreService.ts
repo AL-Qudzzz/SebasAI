@@ -13,8 +13,8 @@ export interface JournalEntry {
 
 interface StoredJournalEntry extends Omit<JournalEntry, 'date' | 'id'> {
   userId: string;
-  createdAt: Timestamp | FieldValue;
-  updatedAt: Timestamp | FieldValue;
+  createdAt: string;
+  updatedAt: string;
   date: string; 
 }
 
@@ -24,11 +24,12 @@ export async function saveJournalEntry(userId: string, entry: Omit<JournalEntry,
     return null;
   }
   try {
+    const now = new Date().toISOString();
     const entryToSave: StoredJournalEntry = {
       ...entry,
       userId: userId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      createdAt: now,
+      updatedAt: now,
     };
     const docRef = await addDoc(collection(db, 'journalEntries'), entryToSave);
     console.log("Journal entry saved to Firestore with ID: ", docRef.id);
@@ -46,8 +47,8 @@ export async function updateJournalEntryInFirestore(userId: string, entryId: str
   }
   try {
     const entryRef = doc(db, 'journalEntries', entryId);
-    const dataToUpdate = { ...entryData, updatedAt: serverTimestamp() };
-    await updateDoc(entryRef, dataToUpdate);
+    const dataToUpdate = { ...entryData, updatedAt: new Date().toISOString() };
+    await updateDoc(entryRef, dataToUpdate as any);
     console.log("Journal entry updated in Firestore: ", entryId);
     return true;
   } catch (error) {
@@ -105,7 +106,7 @@ export interface MoodEntry {
 interface StoredMoodEntry extends Omit<MoodEntry, 'id'> {
   userId: string;
   date: string;
-  loggedAt: Timestamp | FieldValue;
+  loggedAt: string;
 }
 
 export async function saveMoodEntry(userId: string, entry: Omit<MoodEntry, 'id'>): Promise<string | null> {
@@ -117,7 +118,7 @@ export async function saveMoodEntry(userId: string, entry: Omit<MoodEntry, 'id'>
      const entryToSave: StoredMoodEntry = {
       ...entry,
       userId: userId,
-      loggedAt: serverTimestamp(),
+      loggedAt: new Date().toISOString(),
     };
     const docRef = await addDoc(collection(db, 'moodEntries'), entryToSave);
     console.log("Mood entry saved to Firestore with ID: ", docRef.id);
@@ -164,18 +165,19 @@ export interface Goal {
 
 interface StoredGoal extends Omit<Goal, 'id' | 'createdAt' | 'updatedAt'> {
     userId: string;
-    createdAt: Timestamp | FieldValue;
-    updatedAt: Timestamp | FieldValue;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export async function saveGoal(userId: string, goal: Omit<Goal, 'id'>): Promise<string | null> {
     if (!userId) return null;
     try {
+        const now = new Date().toISOString();
         const goalToSave: StoredGoal = {
             ...goal,
             userId: userId,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
+            createdAt: now,
+            updatedAt: now,
         }
         const docRef = await addDoc(collection(db, 'goals'), goalToSave);
         return docRef.id;
@@ -198,8 +200,8 @@ export async function getGoals(userId: string): Promise<Goal[]> {
                 description: data.description,
                 targetDate: data.targetDate,
                 status: data.status,
-                createdAt: (data.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
-                updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+                createdAt: data.createdAt,
+                updatedAt: data.updatedAt,
             } as Goal;
         });
     } catch (error) {
@@ -212,8 +214,8 @@ export async function updateGoal(userId: string, goalId: string, data: Partial<G
     if (!userId) return false;
     try {
         const goalRef = doc(db, 'goals', goalId);
-        const dataToUpdate = {...data, updatedAt: serverTimestamp()};
-        await updateDoc(goalRef, dataToUpdate);
+        const dataToUpdate = {...data, updatedAt: new Date().toISOString()};
+        await updateDoc(goalRef, dataToUpdate as any);
         return true;
     } catch (error) {
         console.error("Error updating goal:", error);
@@ -256,7 +258,7 @@ interface StoredCommunityPost {
   userId: string;
   authorEmail: string;
   content: string;
-  createdAt: Timestamp;
+  createdAt: string; // ISO string
   replyCount: number;
   repostCount: number;
   bookmarkCount: number;
@@ -267,32 +269,24 @@ export async function createCommunityPost(userId: string, authorEmail: string, c
     return null;
   }
   try {
-    const postToSave = {
+    const createdAt = new Date().toISOString();
+    const postToSave: StoredCommunityPost = {
       userId,
       authorEmail,
       content: content.trim(),
-      createdAt: serverTimestamp(),
+      createdAt: createdAt,
       replyCount: 0,
       repostCount: 0,
       bookmarkCount: 0,
     };
     const docRef = await addDoc(collection(db, 'communityPosts'), postToSave);
     
-    // Instead of re-fetching, construct the return object directly.
-    // This is more efficient and avoids potential race conditions.
     return {
       id: docRef.id,
-      userId,
-      authorEmail,
-      content: content.trim(),
-      createdAt: new Date().toISOString(), // Use current date as a good approximation
-      replyCount: 0,
-      repostCount: 0,
-      bookmarkCount: 0,
+      ...postToSave
     };
   } catch (error: any) {
     console.error("Error in createCommunityPost while adding document to Firestore:", error);
-    // Log the actual Firestore error
     if (error.code) {
       console.error(`Firestore error code: ${error.code}`);
     }
@@ -306,11 +300,9 @@ export async function getCommunityPosts(): Promise<CommunityPost[]> {
     const querySnapshot = await getDocs(q);
     const posts: CommunityPost[] = querySnapshot.docs.map((docSnap) => { 
       const data = docSnap.data() as StoredCommunityPost;
-      const createdAtISO = (data.createdAt as Timestamp)?.toDate().toISOString() || new Date().toISOString();
       return {
         id: docSnap.id,
         ...data,
-        createdAt: createdAtISO, 
       };
     });
     console.log(`Fetched ${posts.length} community posts from Firestore.`);
@@ -338,14 +330,14 @@ export async function interactWithPost(userId: string, postId: string, interacti
         throw "Postingan tidak ditemukan.";
       }
 
-      let currentCount = postDoc.data()[countField] || 0;
+      let currentCount = postDoc.data()?.[countField] || 0;
       if (interactionDoc.exists()) {
         transaction.delete(interactionRef);
         transaction.update(postRef, { [countField]: increment(-1) });
         userHasInteracted = false;
         return currentCount > 0 ? currentCount - 1 : 0;
       } else {
-        transaction.set(interactionRef, { interactedAt: serverTimestamp(), userId: userId });
+        transaction.set(interactionRef, { interactedAt: new Date().toISOString(), userId: userId });
         transaction.update(postRef, { [countField]: increment(1) });
         userHasInteracted = true;
         return currentCount + 1;
@@ -389,29 +381,21 @@ export async function createReply(postId: string, userId: string, authorEmail: s
     try {
         const postRef = doc(db, 'communityPosts', postId);
         const repliesCollectionRef = collection(postRef, 'replies');
+        const createdAt = new Date().toISOString();
         
         const replyToSave = {
             userId,
             authorEmail,
             content,
-            createdAt: serverTimestamp(),
+            createdAt: createdAt,
         };
 
         const replyDocRef = await addDoc(repliesCollectionRef, replyToSave);
         await updateDoc(postRef, { replyCount: increment(1) });
         
-        const newReplySnap = await getDoc(replyDocRef);
-        if (!newReplySnap.exists()) {
-            throw new Error("Failed to fetch newly created reply.");
-        }
-        const data = newReplySnap.data();
-
         return {
-            id: newReplySnap.id,
-            userId,
-            authorEmail,
-            content,
-            createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
+            id: replyDocRef.id,
+            ...replyToSave,
         };
     } catch (error) {
         console.error("Error creating reply:", error);
@@ -433,7 +417,7 @@ export async function getReplies(postId: string): Promise<Reply[]> {
                 userId: data.userId,
                 authorEmail: data.authorEmail,
                 content: data.content,
-                createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
+                createdAt: data.createdAt,
             }
         });
     } catch (error) {
