@@ -53,9 +53,10 @@ export async function handleUserMessage(
       error: null,
       isLoading: false,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error processing AI chat:', error);
-    const systemMessage = { role: 'system' as const, content: 'Sorry, something went wrong. Please try again.' };
+    const errorMessage = error.message || 'An unknown error occurred with the AI service.';
+    const systemMessage = { role: 'system' as const, content: `Sorry, something went wrong. Please try again.\nError: ${errorMessage}` };
     return {
       messages: [...newMessages, systemMessage],
       error: 'Failed to get response from AI.',

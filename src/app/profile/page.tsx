@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogOut, Loader2, User as UserIcon } from 'lucide-react'; // Added UserIcon
+import Image from 'next/image';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -57,7 +58,15 @@ export default function ProfilePage() {
       <Card className="w-full max-w-md mx-auto shadow-lg">
         <CardHeader className="items-center text-center">
           <Avatar className="w-24 h-24 mb-4 ring-2 ring-primary ring-offset-2 ring-offset-background">
-            <AvatarImage src={`https://placehold.co/100x100.png?text=${currentUser.email?.[0]?.toUpperCase() ?? 'U'}`} alt={currentUser.email ?? 'User Avatar'} data-ai-hint="profile avatar" />
+             <Image 
+                src={`https://placehold.co/100x100.png?text=${currentUser.email?.[0]?.toUpperCase() ?? 'U'}`} 
+                alt={currentUser.email ?? 'User Avatar'} 
+                width={100}
+                height={100}
+                priority
+                className="aspect-square h-full w-full"
+                data-ai-hint="profile avatar"
+              />
             <AvatarFallback>{currentUser.email?.[0]?.toUpperCase() ?? 'U'}</AvatarFallback>
           </Avatar>
           <CardTitle className="text-2xl">{currentUser.email}</CardTitle>

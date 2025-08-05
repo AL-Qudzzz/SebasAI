@@ -49,10 +49,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params;
-    const { content } = await request.json() as { content?: string };
-
-    if (content !== undefined && (typeof content !== 'string' || content.trim() === '')) {
-      return NextResponse.json({ error: "Konten catatan tidak boleh kosong jika disediakan." }, { status: 400 });
+    const body = await request.json() as { content?: string };
+    const { content } = body;
+    
+    // Improved validation: Check if content is provided and is a non-empty string
+    if (content === undefined || typeof content !== 'string' || content.trim() === '') {
+      return NextResponse.json({ error: "Konten catatan tidak boleh kosong." }, { status: 400 });
     }
     
     const noteIndex = notes.findIndex(n => n.id === id);
@@ -62,9 +64,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const updatedNote = { ...notes[noteIndex]! };
-    if (content !== undefined) {
-        updatedNote.content = content.trim();
-    }
+    updatedNote.content = content.trim();
     updatedNote.timestamp = new Date().toISOString(); // Update timestamp on any change
 
     notes[noteIndex] = updatedNote;
@@ -102,4 +102,3 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Gagal menghapus catatan." }, { status: 500 });
   }
 }
-

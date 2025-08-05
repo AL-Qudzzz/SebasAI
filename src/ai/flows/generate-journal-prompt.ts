@@ -67,17 +67,12 @@ const generateJournalPromptFlow = ai.defineFlow(
         return output;
       } else {
         console.error('AI did not return a valid prompt structure from generateJournalPromptFlow. LLM Response:', JSON.stringify(response, null, 2));
-        // Return a fallback prompt
-        return { prompt: "Take a moment to reflect on your day. What's one thing that stood out to you, good or bad?" };
+        throw new Error("AI returned an invalid or empty prompt.");
       }
     } catch (error: any) {
       console.error('Error in generateJournalPromptFlow during AI call:', error);
-      if (error.cause) {
-        console.error('Cause of error:', error.cause);
-      }
-      // Return a fallback prompt in case of an exception during the AI call
-      return { prompt: "What are you grateful for today? Even small things count." };
+      // Re-throw error to be handled by the client action
+      throw error;
     }
   }
 );
-

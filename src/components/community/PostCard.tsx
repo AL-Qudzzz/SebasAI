@@ -45,7 +45,7 @@ export default function PostCard({ post, currentUser, userInteractions, onIntera
   };
   
   return (
-    <Card key={post.id} className="shadow-sm hover:shadow-md transition-shadow">
+    <Card key={post.id} className="shadow-sm hover:shadow-md transition-shadow w-full min-h-[180px]">
       <CardHeader>
         <div className="flex items-center space-x-3">
           <Avatar className="h-10 w-10">

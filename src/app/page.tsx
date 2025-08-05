@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import PageTitle from '@/components/common/PageTitle';
 import { MessageSquare, BookText, Smile, Lightbulb, ArrowRight } from 'lucide-react';
+import Image from 'next/image';
 
 const features = [
   {
@@ -41,6 +42,21 @@ export default function DashboardPage() {
         title="Welcome to Sebas"
         description="Your personal AI companion for mental wellness and self-reflection. Explore the features below to get started."
       />
+      
+      <div className="relative w-full h-64 rounded-lg overflow-hidden shadow-lg">
+        <Image
+            src="https://placehold.co/1200x400.png"
+            alt="A calming wellness scene"
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="object-cover"
+            data-ai-hint="wellness zen"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+        <h2 className="absolute bottom-4 left-4 text-2xl font-headline text-white">Find your calm.</h2>
+      </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {features.map((feature) => (

@@ -87,7 +87,7 @@ const chatWithAIFlow = ai.defineFlow(
     } catch (error) {
       console.error('Error in chatWithAIFlow:', error);
       // Re-throw the error to be caught by the calling action
-      throw new Error("Terjadi kesalahan saat memproses permintaan chat Anda.");
+      throw error;
     }
   }
 );

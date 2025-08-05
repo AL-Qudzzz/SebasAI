@@ -70,15 +70,12 @@ const personalizeWellnessContentFlow = ai.defineFlow(
       if (output && typeof output.suggestedContent === 'string' && output.suggestedContent.trim() !== '') {
         return output;
       }
-      console.error('AI did not return valid content for personalizeWellnessContentFlow. Output:', JSON.stringify(output, null, 2));
-      return { suggestedContent: "I'm having a little trouble thinking of suggestions right now. Perhaps try a general mindfulness exercise, like focusing on your breath for a few minutes?" };
+       console.error('AI did not return valid content for personalizeWellnessContentFlow. Output:', JSON.stringify(output, null, 2));
+       throw new Error("AI returned invalid or empty content.");
     } catch (error: any) {
       console.error('Error in personalizeWellnessContentFlow during AI call:', error);
-      if (error.cause) {
-        console.error('Cause of error:', error.cause);
-      }
-      return { suggestedContent: "Sorry, I couldn't generate personalized suggestions at this moment. Please try again later." };
+       // Re-throw error to be handled by the client action
+      throw error;
     }
   }
 );
-
