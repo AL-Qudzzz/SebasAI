@@ -18,6 +18,37 @@ interface UserInteractions {
   bookmarked: Set<string>;
 }
 
+// --- DUMMY DATA FOR DEBUGGING ---
+const dummyPosts: CommunityPost[] = [
+  {
+    id: 'dummy1',
+    userId: 'user123',
+    authorEmail: 'susan.testing@example.com',
+    content: 'Ini adalah postingan dummy untuk pengujian. Tampilannya bagus, dan semua tombol interaksi (balas, repost, bookmark) seharusnya berfungsi di sisi UI.',
+    createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 minutes ago
+    replyCount: 2,
+    repostCount: 5,
+    bookmarkCount: 10,
+    replies: [
+        { id: 'reply1', userId: 'user456', authorEmail: 'john.doe@example.com', content: 'Komentar pertama! Terlihat bagus.', createdAt: new Date().toISOString() },
+        { id: 'reply2', userId: 'user789', authorEmail: 'jane.doe@example.com', content: 'Setuju, tata letaknya berfungsi dengan baik.', createdAt: new Date().toISOString() }
+    ]
+  },
+  {
+    id: 'dummy2',
+    userId: 'user456',
+    authorEmail: 'brian.dev@example.com',
+    content: 'Postingan kedua untuk mengisi ruang dan memeriksa fungsionalitas scroll. Sejauh ini, semuanya tampak hebat. Fitur balasan juga dapat diuji di sini.',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // 1 hour ago
+    replyCount: 0,
+    repostCount: 1,
+    bookmarkCount: 3,
+    replies: []
+  },
+];
+// --- END DUMMY DATA ---
+
+
 // --- Sub-components for better organization ---
 
 function CreatePostForm({
@@ -33,6 +64,10 @@ function CreatePostForm({
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Temporarily disable posting to focus on displaying data
+    toast({ title: "Fitur Dinonaktifkan Sementara", description: "Pembuatan postingan dinonaktifkan untuk debugging. Data yang ditampilkan adalah data dummy." });
+    return;
+    /*
     if (!currentUser) {
       toast({ title: "Otentikasi Gagal", description: "Anda harus login untuk membuat postingan.", variant: "destructive" });
       return;
@@ -65,6 +100,7 @@ function CreatePostForm({
     } finally {
       setIsSubmittingPost(false);
     }
+    */
   };
 
   return (
@@ -148,36 +184,16 @@ export default function CommunityPage() {
 
   const fetchPosts = useCallback(async (userId?: string | null) => {
     setIsLoadingPosts(true);
-    try {
-      const response = await fetch('/api/community/posts');
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({ error: 'Gagal memuat postingan.' }));
-        throw new Error(errData.error);
-      }
-      const data: CommunityPost[] = await response.json();
-      setPosts(data);
-
-      if (userId && data.length > 0) {
-        const postIds = data.map(p => p.id);
-        const interactionsResponse = await fetch('/api/community/posts/interactions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, postIds }),
+    // Use dummy data instead of fetching from API
+    setTimeout(() => {
+        setPosts(dummyPosts);
+        setUserInteractions({
+            reposted: new Set(['dummy2']), // Let's say user has reposted the second dummy post
+            bookmarked: new Set(['dummy1']), // and bookmarked the first one
         });
-        if (interactionsResponse.ok) {
-          const interactions: { reposted: string[], bookmarked: string[] } = await interactionsResponse.json();
-          setUserInteractions({
-            reposted: new Set(interactions.reposted),
-            bookmarked: new Set(interactions.bookmarked),
-          });
-        }
-      }
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Gagal memuat postingan.", variant: "destructive" });
-    } finally {
-      setIsLoadingPosts(false);
-    }
-  }, [toast]);
+        setIsLoadingPosts(false);
+    }, 500); // Simulate network delay
+  }, []);
 
   useEffect(() => {
     if (!loadingAuthState && !currentUser) {
@@ -190,10 +206,17 @@ export default function CommunityPage() {
   const handleInteraction = async (postId: string, interactionType: 'repost' | 'bookmark') => {
     if (!currentUser) return;
 
-    const originalInteractions = { ...userInteractions };
-    const originalPosts = [...posts];
+    // Optimistic UI Update for dummy data
+    setUserInteractions(prev => {
+        const newSet = new Set(prev[interactionType === 'repost' ? 'reposted' : 'bookmarked']);
+        if (newSet.has(postId)) {
+            newSet.delete(postId);
+        } else {
+            newSet.add(postId);
+        }
+        return { ...prev, [interactionType === 'repost' ? 'reposted' : 'bookmarked']: newSet };
+    });
 
-    // Optimistic UI Update
     setPosts(prevPosts => prevPosts.map(p => {
         if (p.id === postId) {
             const currentCount = p[`${interactionType}Count`] || 0;
@@ -205,31 +228,8 @@ export default function CommunityPage() {
         }
         return p;
     }));
-    setUserInteractions(prev => {
-        const newSet = new Set(prev[interactionType === 'repost' ? 'reposted' : 'bookmarked']);
-        if (newSet.has(postId)) {
-            newSet.delete(postId);
-        } else {
-            newSet.add(postId);
-        }
-        return { ...prev, [interactionType === 'repost' ? 'reposted' : 'bookmarked']: newSet };
-    });
 
-    // API Call
-    try {
-        const response = await fetch(`/api/community/posts/interactions`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: currentUser.uid, postId, interactionType }),
-        });
-        if (!response.ok) throw new Error("Gagal memperbarui interaksi.");
-        // Data is already updated optimistically, can re-sync if needed but not necessary for this interaction
-    } catch (error: any) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-        // Rollback on error
-        setUserInteractions(originalInteractions);
-        setPosts(originalPosts);
-    }
+    toast({ title: "Interaksi Dummy", description: `Anda ${userInteractions[interactionType === 'repost' ? 'reposted' : 'bookmarked'].has(postId) ? 'menghapus' : 'menambahkan'} ${interactionType} pada postingan dummy.` });
   };
 
   const handlePostCreated = (newPost: CommunityPost) => {
@@ -247,6 +247,7 @@ export default function CommunityPage() {
         }
         return post;
     }));
+    toast({ title: "Balasan Dummy", description: "Balasan Anda ditambahkan ke postingan dummy." });
   };
   
   if (loadingAuthState) {
@@ -294,5 +295,3 @@ export default function CommunityPage() {
     </div>
   );
 }
-
-    
